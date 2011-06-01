@@ -1,0 +1,11 @@
+<use   name="FWCore/Framework"/>
+<use   name="CommonTools/UtilAlgos"/>
+<use   name="PhysicsTools/CandUtils"/>
+<use   name="CMGTools/HtoZZ2l2nu"/>
+<use   name="boost"/>
+<use   name="rootgraphics"/>
+<use   name="rootcore"/>
+
+<export>
+  <lib   name="1"/>
+</export>
