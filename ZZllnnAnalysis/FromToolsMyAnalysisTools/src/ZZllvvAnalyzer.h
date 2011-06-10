@@ -4,8 +4,8 @@
 /** \class ZZllvvAnalyzer
  *  No description available.
  *
- *  $Date: 2011/04/07 15:21:48 $
- *  $Revision: 1.4 $
+ *  $Date: 2011/06/01 17:40:11 $
+ *  $Revision: 1.1 $
  *  \author G. Cerminara - CERN
  *          D. Trocino   - Northeastern University
  */
@@ -67,6 +67,14 @@ private:
   edm::InputTag zmmInput;
   bool debug;
   edm::ParameterSet vertexSelection;
+
+  // Parameters for RedMET
+  double kRecoilLongWeight;
+  double kRecoilPerpWeight;
+  double kSigmaPtLongWeight;
+  double kSigmaPtPerpWeight;
+  double kPerpComponentWeight;
+  double theRedMETMinCut;
 
   void initializePlots();
   void fillPlots(std::string, 

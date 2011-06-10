@@ -37,7 +37,13 @@ process.zzllvvAnalyzer = cms.EDAnalyzer("ZZllvvAnalyzer",
                                         #Electrons = BaseElectronsSelection.clone(),
                                         #Dileptons = BaseDileptonSelection.clone(),
                                         #Jets = BaseJetSelection.clone(),
-                                        #MET = BaseMetSelection.clone()
+                                        #MET = BaseMetSelection.clone(),
+                                        RecoilLongWeight = cms.untracked.double(2.0),
+                                        RecoilPerpWeight = cms.untracked.double(2.0),
+                                        SigmaPtLongWeight = cms.untracked.double(2.8),
+                                        SigmaPtPerpWeight = cms.untracked.double(2.8),
+                                        PerpComponentWeight = cms.untracked.double(1.0),
+                                        RedMETMinCut = cms.untracked.double(50.0),
                                         )
 
 

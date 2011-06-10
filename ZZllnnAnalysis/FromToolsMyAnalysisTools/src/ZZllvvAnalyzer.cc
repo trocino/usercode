@@ -1,8 +1,8 @@
 /*
  *  See header file for a description of this class.
  *
- *  $Date: 2011/04/18 17:39:18 $
- *  $Revision: 1.5 $
+ *  $Date: 2011/06/01 17:40:11 $
+ *  $Revision: 1.1 $
  *  \author G. Cerminara - CERN
  *          D. Trocino   - Northeastern University
  */
@@ -89,8 +89,17 @@ ZZllvvAnalyzer::ZZllvvAnalyzer(const ParameterSet& pSet) : totNEvents(0)
   nEventPreSkim = 0;
   nEventBaseFilter = 0;
   nEventSkim = 0;
-  //  redMETComputer_std   = new ReducedMETComputer(1.5, 1.5, 2., 2., 1.);
-  redMETComputer_std   = new ReducedMETComputer(2., 2., 2.8, 2.8, 1.); // Matt's parameters
+  kRecoilLongWeight = pSet.getUntrackedParameter<double>("RecoilLongWeight", 2.);
+  kRecoilPerpWeight = pSet.getUntrackedParameter<double>("RecoilPerpWeight", 2.);
+  kSigmaPtLongWeight = pSet.getUntrackedParameter<double>("SigmaPtLongWeight", 2.5);
+  kSigmaPtPerpWeight = pSet.getUntrackedParameter<double>("SigmaPtPerpWeight", 2.5);
+  kPerpComponentWeight = pSet.getUntrackedParameter<double>("PerpComponentWeight", 1.);
+  theRedMETMinCut = pSet.getUntrackedParameter<double>("RedMETMinCut", 50.);
+  redMETComputer_std   = new ReducedMETComputer(kRecoilLongWeight,
+						kRecoilPerpWeight,
+						kSigmaPtLongWeight,
+						kSigmaPtPerpWeight,
+						kPerpComponentWeight);
   vertexSelection =  pSet.getParameter<ParameterSet>("Vertices");
   if(isMC) {
     puweight=makePuDistr(pSet);
@@ -409,7 +418,7 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   //  Cut2: cut on the RedMET
   // =====================================================================
   //
-  if(redMETComputer_std->reducedMET()<75) return;
+  if(redMETComputer_std->reducedMET()<theRedMETMinCut) return;
   //
   fillPlots("RedMET-cut", vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, muonLead, muonSubLead, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
   //
