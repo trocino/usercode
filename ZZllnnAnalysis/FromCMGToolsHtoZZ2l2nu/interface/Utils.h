@@ -13,6 +13,7 @@
 
 namespace pat {
   class Muon;
+  class Electron;
 }
 
 class LorenzVector;
@@ -27,8 +28,12 @@ public:
 
   // Operations
   static double computeRelIsolation(const pat::Muon *muon);
+  static double computeRelIsolation(const pat::Electron *ele);
+  //  static double computeRelIsolation(const reco::CandidatePtr lept);
 
   static int muonType(const pat::Muon *muon);
+  static int muonType(const pat::Electron *ele);
+  //  static int muonType(const reco::CandidatePtr lept);
 
 //   static TLorentzVector convert(const LorenzVector& original);
 
