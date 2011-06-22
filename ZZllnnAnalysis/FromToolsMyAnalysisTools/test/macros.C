@@ -129,8 +129,8 @@ void plotAndProfileX (TH2* h2, float min, float max, bool profile) {
 // Fit a histogram with a gaussian and draw it in the range 
 // mean+-nsigmas*RMS.
 void drawGFit(TH1 * h1, float nsigmas, float min, float max){
-  float minfit = h1->GetMean() - h1->GetRMS();
-  float maxfit = h1->GetMean() + h1->GetRMS();
+  float minfit = h1->GetMean() - nsigmas*h1->GetRMS();
+  float maxfit = h1->GetMean() + nsigmas*h1->GetRMS();
   drawGFit(h1, min, max, minfit, maxfit);
   gPad->Draw();
 }
