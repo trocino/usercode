@@ -1,8 +1,8 @@
 /*
  *  See header file for a description of this class.
  *
- *  $Date: 2011/06/01 17:40:11 $
- *  $Revision: 1.1 $
+ *  $Date: 2011/04/18 17:39:18 $
+ *  $Revision: 1.5 $
  *  \author G. Cerminara - CERN
  *          D. Trocino   - Northeastern University
  */
@@ -33,6 +33,7 @@
 #include <algorithm>
 #include "TFile.h"
 #include "TString.h"
+#include "TNtuple.h"
 
 #include "CMGTools/HtoZZ2l2nu/interface/Utils.h"
 #include "CMGTools/HtoZZ2l2nu/interface/ObjectFilters.h"
@@ -48,11 +49,12 @@ vector<double> puweight;
 float theWeight=1.;
 
 // Analysis cuts
-TString allSteps[]={"Analyzed", "Dilepton", "Mass-window", 
-		    "RedMET-cut", "Jet-veto", "Lepton-veto"};
-unsigned int nSteps=sizeof(allSteps)/sizeof(TString);
+TString allSteps[]={"Analyzed", "Dilepton", "MassWindow", 
+		    "JetVeto", "LeptonVeto", "RedMETcut"};
+const unsigned int nSteps=sizeof(allSteps)/sizeof(TString);
 map<string, int> maps;
-int gShift=3;
+map<string, int> passedCuts;
+//int gShift=3;
 
 TH1F *hPreEventCounter;
 TH1F *hEventCounter;
@@ -75,10 +77,18 @@ vector<HistoRedMET*>     hRedMetStd;
 
 ReducedMETComputer *redMETComputer_std;
 
+TString varsForLL[]={"run", "lumi", "event", "weight", 
+		     "leadCharge", "subleadCharge", 
+		     "leadPt", "subleadPt", 
+		     "diLeptInvMass", 
+		     "dileptLeadDeltaPhi",
+		     "leptMinusCmCosTheta"};
+const unsigned int nVarsOpt=sizeof(varsForLL)/sizeof(TString);
 
 ZZllvvAnalyzer::ZZllvvAnalyzer(const ParameterSet& pSet) : totNEvents(0) 
 {
-  theFile = new TFile(pSet.getUntrackedParameter<string>("fileName", "ZZllvvAnalyzer.root").c_str(),"RECREATE");
+  //theFile = new TFile(pSet.getUntrackedParameter<string>("fileName", "ZZllvvAnalyzer.root").c_str(),"RECREATE");
+  theOutFileName = pSet.getUntrackedParameter<string>("fileName", "ZZllvvAnalyzer.root");
   source = pSet.getUntrackedParameter<InputTag>("source");
   zmmInput = pSet.getUntrackedParameter<InputTag>("zmmInput");
   isMC = pSet.getUntrackedParameter<bool>("isMC", false);
@@ -89,6 +99,8 @@ ZZllvvAnalyzer::ZZllvvAnalyzer(const ParameterSet& pSet) : totNEvents(0)
   nEventPreSkim = 0;
   nEventBaseFilter = 0;
   nEventSkim = 0;
+  flavorCombo = pSet.getUntrackedParameter<int>("FlavorCombination", 0);
+  chargeCombo = pSet.getUntrackedParameter<int>("ChargeCombination", -1);
   kRecoilLongWeight = pSet.getUntrackedParameter<double>("RecoilLongWeight", 2.);
   kRecoilPerpWeight = pSet.getUntrackedParameter<double>("RecoilPerpWeight", 2.);
   kSigmaPtLongWeight = pSet.getUntrackedParameter<double>("SigmaPtLongWeight", 2.5);
@@ -113,16 +125,35 @@ ZZllvvAnalyzer::~ZZllvvAnalyzer(){
 
 
 void ZZllvvAnalyzer::beginJob() {
+  // Output file
+  theFile = new TFile(theOutFileName.c_str(),"RECREATE");
 
   // Preliminary steps
-  hPreEventCounter=new TH1F("PreEventCounter", "Unscaled number of events", 4, 0., 4.);
+  hPreEventCounter=new TH1F("PreEventCounter", "Unscaled number of events and more", 7, 0., 7.);
   hPreEventCounter->GetXaxis()->SetBinLabel(1, "Before-skim");
   hPreEventCounter->GetXaxis()->SetBinLabel(2, "Pre-filters");
   hPreEventCounter->GetXaxis()->SetBinLabel(3, "After-skim");
   hPreEventCounter->GetXaxis()->SetBinLabel(4, "Analyzed");
+  hPreEventCounter->GetXaxis()->SetBinLabel(5, "Integrated-luminosity");
+  hPreEventCounter->GetXaxis()->SetBinLabel(6, "Cross-section");
+  hPreEventCounter->GetXaxis()->SetBinLabel(7, "Branching-ratio");
 
   // Book the histograms
   initializePlots();
+
+  // Ntuple
+  TString varsTmp;
+  for(unsigned int z=0; z<nVarsOpt; ++z) {
+    if(z) varsTmp+=":";
+    varsTmp+=varsForLL[z];
+  }
+  for(unsigned int y=0; y<nSteps; ++y) {
+    varsTmp+=(":"+allSteps[y]);
+    passedCuts[allSteps[y].Data()]=1;
+  }
+  varsTmp+=":AllCutsPassed";
+  passedCuts["AllCutsPassed"]=1;
+  finalNtpl=new TNtuple("ntuple", "Final results", varsTmp.Data());
 }
 
 
@@ -135,14 +166,15 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   // Count all the events (the EventCounter histo is filled few lines below...)
   totNEvents++;
 
+  // Reset all flags
+  resetFlags();
+
   if(isMC==event.isRealData()) {
     string decl(isMC ? "MC" : "data");
     string real(event.isRealData() ? "data" : "MC");
-    cout << " ********************************** ERROR **********************************" << endl;
-    cout << "  Sample is declared as " << decl.c_str() << ", but is " << real.c_str() 
-	 << "! Exception thrown!" << endl;
-    cout << " ***************************************************************************" << endl;
-    std::exception();
+    cout << "[ZZllvvAnalyzer] *** Error: sample is declared as " << decl.c_str() 
+	 << ", but is " << real.c_str() << endl;
+    throw std::exception();
   }
 
   using reco::Candidate; 
@@ -166,8 +198,10 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
     }
 
     if(nPuInt>=puweight.size()) {
-      cout << " ****** ERROR: n. PU interactions greater than the size of weights vector! Exception thrown! ****** " << endl;
-      std::exception();
+      cout << "[ZZllvvAnalyzer] *** Error: n. PU interactions (" << nPuInt 
+	   << ") greater than the size of weights vector (" << puweight.size() 
+	   << ")! " << endl;
+      throw std::exception();
     }
 
     theWeight=puweight[nPuInt];
@@ -245,10 +279,14 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   }
 
 
-  ///////////////////////
-  // !!! TEMPORARY !!! //
-  ///////////////////////
-  if(muonLead==0 || muonSubLead==0) 
+  // Skip unwanted flavor combinations
+  if( flavorCombo==0 && (electronLead==0 || electronSubLead==0) && (muonLead==0 || muonSubLead==0) ) 
+    return; 
+  if( flavorCombo==1 && (electronLead==0 || electronSubLead==0) )
+    return;
+  if( flavorCombo==2 && (muonLead==0 || muonSubLead==0) ) 
+    return; 
+  if( flavorCombo==3 && (electronLead==0 || muonSubLead==0) && (muonLead==0 || electronSubLead==0) ) 
     return; 
 
   // =====================================================================
@@ -338,6 +376,16 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   if(debug) cout << "\t MET:" << met->pt() << ";" << met->phi() << endl;
 
   // Compute the redMET
+  double lep1Err=( muonLead ? muonLead->track()->ptError() : 
+		   electronLead->electronMomentumError()*sin(electronLead->theta()) );
+  double lep2Err=( muonSubLead ? muonSubLead->track()->ptError() : 
+		   electronSubLead->electronMomentumError()*sin(electronSubLead->theta()) );
+  redMETComputer_std->compute(lep1->p4(), lep1Err, 
+			      lep2->p4(), lep2Err, 
+			      selJetMomenta,
+			      met->p4());
+
+  /*
   if(muonLead!=0 && muonSubLead!=0) {
     // Muon case
     redMETComputer_std->compute(muonLead->p4(), muonLead->track()->ptError(),
@@ -356,11 +404,20 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
     cout << " *** Neither an electron nor a muon valid pair was found! ***" << endl;
     return;
   }
+  */
 
   // =====================================================================
   //  ? cut on the RedMET
   // =====================================================================
 
+
+  // // //    __      _______ ________ / \_____      _______  __        ___ ___    ___   // // //
+  // // //   |  |    |   ___ | _    _ |\ / ____\     \      \|  |      /   \\  |  |  /   // // //
+  // // //   |  |    |  |__ \|/ |  | \| Y \____\|     |  D   |  |     /  O  \\  \/  /    // // //
+  // // //   |  |    |   __|    |  |     \____ \      |   __/|  |    |  ___  \\    /     // // //
+  // // //   |  |___/|  |___/|  |  |    |\____| |     |  |   |  |___/| /   \  \|  |      // // //
+  // // //   |_______|_______| /____\   |______/     /____\  |_______|_\   /___\___\     // // //
+  // // // 								                 // // //
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
   //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//
@@ -384,6 +441,7 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//
   ///////////////////////////////////////////////////////////////////////////////////////////////
 
+  TString thiscut="";
 
   ////////////
   //
@@ -391,10 +449,16 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   //  Cut0: ask for the dilepton to exist (right flavour, charge)
   // =====================================================================
   //
-  if( (lep1->charge()*lep2->charge()>0) || ( (muonLead==0 || muonSubLead==0) && (electronLead==0 || electronSubLead==0) ) )
-    return;
+  thiscut="Dilepton";
+  //if((lep1->charge()*lep2->charge()>0) || ( (muonLead==0 || muonSubLead==0) && (electronLead==0 || electronSubLead==0) )) 
+  if( chargeCombo!=0 && lep1->charge()*lep2->charge()!=chargeCombo ) {
+    passedCuts[thiscut.Data()]=0;
+    passedCuts["AllCutsPassed"]=0;
+    //return;
+  }
   //
-  fillPlots("Dilepton", vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, muonLead, muonSubLead, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
+  if(passedCuts["AllCutsPassed"]>0.5) 
+    fillPlots(thiscut.Data(), vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, lep1, lep2, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
   //
   ////////////
 
@@ -405,22 +469,15 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   //  Cut1: apply mass window on the Z mass
   // =====================================================================
   //
-  if(fabs(diLeptonMom.mass()-91.1876)>15.) return;
+  thiscut="MassWindow";
+  if(fabs(diLeptonMom.mass()-91.1876)>15.) {
+    passedCuts[thiscut.Data()]=0;
+    passedCuts["AllCutsPassed"]=0;
+    //return;
+  }
   //
-  fillPlots("Mass-window", vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, muonLead, muonSubLead, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
-  //
-  ////////////
-
-
-  ////////////
-  //
-  // =====================================================================
-  //  Cut2: cut on the RedMET
-  // =====================================================================
-  //
-  if(redMETComputer_std->reducedMET()<theRedMETMinCut) return;
-  //
-  fillPlots("RedMET-cut", vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, muonLead, muonSubLead, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
+  if(passedCuts["AllCutsPassed"]>0.5) 
+    fillPlots(thiscut.Data(), vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, lep1, lep2, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
   //
   ////////////
 
@@ -428,12 +485,18 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   ////////////
   //
   // =====================================================================
-  //  Cut3: veto on the number of jets (< 2)
+  //  Cut2: veto on the number of jets (< 2)
   // =====================================================================
   //
-  if(selJetMomenta.size()>1) return;
+  thiscut="JetVeto";
+  if(selJetMomenta.size()>1) {
+    passedCuts[thiscut.Data()]=0;
+    passedCuts["AllCutsPassed"]=0;
+    //return;
+  }
   //
-  fillPlots("Jet-veto", vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, muonLead, muonSubLead, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
+  if(passedCuts["AllCutsPassed"]>0.5) 
+    fillPlots(thiscut.Data(), vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, lep1, lep2, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
   //
   ////////////
 
@@ -441,15 +504,86 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   ////////////
   //
   // =====================================================================
-  //  Cut4: veto on the third lepton
+  //  Cut3: veto on the third lepton
   // =====================================================================
   //
-  if(totNumberOfSelLeptons>0) return;  // N.B. totNumberOfSelLeptons is the number of extra vertices, so must be = 0. 
+  thiscut="LeptonVeto";
+  if(totNumberOfSelLeptons>0) {  // N.B. totNumberOfSelLeptons is the number of extra vertices, so must be = 0. 
+    passedCuts[thiscut.Data()]=0;
+    passedCuts["AllCutsPassed"]=0;
+    //return;
+  }
   //
-  fillPlots("Lepton-veto", vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, muonLead, muonSubLead, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
+  if(passedCuts["AllCutsPassed"]>0.5) 
+    fillPlots(thiscut.Data(), vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, lep1, lep2, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
   //
   ////////////
 
+
+  ////////////
+  //
+  // =====================================================================
+  //  Cut4: cut on the RedMET
+  // =====================================================================
+  //
+  thiscut="RedMETcut";
+  if(redMETComputer_std->reducedMET()<theRedMETMinCut) {
+    passedCuts[thiscut.Data()]=0;
+    passedCuts["AllCutsPassed"]=0;
+    //return;
+  }
+  //
+  if(passedCuts["AllCutsPassed"]>0.5) 
+    fillPlots(thiscut.Data(), vtx, totNvtx, goodNvtx, totNumberOfSelLeptons, lep1, lep2, allSelTracks, selIsoTracks, met, redMETComputer_std, selJetMomenta, moreSelJetMomenta);
+  //
+  ////////////
+
+
+  // ********************* //
+  // ********************* //
+  // **                 ** //
+  // **  Fill the tree  ** //
+  // **                 ** //
+  // ********************* //
+  // ********************* //
+
+  float tmpVars[nVarsOpt+nSteps+1];
+  unsigned int tmpCnt=0;
+  //
+  // Variables
+  tmpVars[tmpCnt++]=event.run();
+  tmpVars[tmpCnt++]=event.luminosityBlock();
+  tmpVars[tmpCnt++]=event.id().event();
+  tmpVars[tmpCnt++]=theWeight;  // only PU weight
+  tmpVars[tmpCnt++]=lep1->charge();
+  tmpVars[tmpCnt++]=lep2->charge();
+  tmpVars[tmpCnt++]=lep1->pt();
+  tmpVars[tmpCnt++]=lep2->pt();
+  tmpVars[tmpCnt++]=diLeptonMom.mass();
+  tmpVars[tmpCnt++]=hDileptKin.back()->dileptLeadDeltaPhi;
+  tmpVars[tmpCnt++]=hDileptKin.back()->leptMinusCmCosTheta;
+  if(tmpCnt!=nVarsOpt) {
+    cout << "[ZZllvvAnalyzer] *** Error: wrong number of "
+	 << "variables used to fill the tree!" << endl;
+    throw std::exception();
+  }
+  //
+  // Flags
+  for(unsigned int jj=0; jj<nSteps; ++jj) {
+    tmpVars[tmpCnt++]=float(passedCuts[allSteps[jj].Data()]);
+  }
+  if(tmpCnt!=nVarsOpt+nSteps) {
+    cout << "[ZZllvvAnalyzer] *** Error: wrong number of "
+	 << "flags used to fill the tree!" << endl;
+    throw std::exception();
+  }
+  //
+  // Global accept
+  tmpVars[tmpCnt++]=float(passedCuts["AllCutsPassed"]);
+
+  //
+  // Fill the ntpule
+  finalNtpl->Fill(tmpVars);
 
   //
   // ************************************************************
@@ -495,10 +629,13 @@ void ZZllvvAnalyzer::endJob() {
   hPreEventCounter->SetBinContent(2, nEventBaseFilter);
   hPreEventCounter->SetBinContent(3, nEventSkim);
   hPreEventCounter->SetBinContent(4, totNEvents);
+  hPreEventCounter->SetBinContent(5, theLumi);
+  hPreEventCounter->SetBinContent(6, theXsect);
+  hPreEventCounter->SetBinContent(7, theBrRatio);
 
   if(isMC) {
-    double scaleFact=theLumi*theXsect/nEventPreSkim;
-    cout << "Luminosity*cross-section/#events [pb]: " << scaleFact << endl;
+    double scaleFact=theLumi*theXsect*theBrRatio/nEventPreSkim;
+    cout << "Luminosity*cross-section*branching-ratio/#events [pb]: " << scaleFact << endl;
     scalePlots(scaleFact);
   }
 
@@ -506,6 +643,7 @@ void ZZllvvAnalyzer::endJob() {
   theFile->cd();
   hPreEventCounter->Write();
   writePlots();
+  finalNtpl->Write();
   theFile->Close();
 }
 
@@ -566,9 +704,15 @@ void ZZllvvAnalyzer::initializePlots() {
 }
 
 
+// void ZZllvvAnalyzer::fillPlots(string cutString, const reco::Vertex *pv, 
+// 			       unsigned int nVtx, unsigned int nGoodVtx, int nLeptons, 
+// 			       const pat::Muon *leadMu, const pat::Muon *subleadMu, 
+// 			       reco::MuonRefVector &selectTrks, reco::MuonRefVector &selectIsoTrks, 
+// 			       const pat::MET *missEt, ReducedMETComputer *redmet_std, 
+// 			       vector<LorentzVector> &jetV, vector<LorentzVector> &selJetV) {
 void ZZllvvAnalyzer::fillPlots(string cutString, const reco::Vertex *pv, 
 			       unsigned int nVtx, unsigned int nGoodVtx, int nLeptons, 
-			       const pat::Muon *leadMu, const pat::Muon *subleadMu, 
+			       const reco::CandidatePtr leadLept, const reco::CandidatePtr subleadLept, 
 			       reco::MuonRefVector &selectTrks, reco::MuonRefVector &selectIsoTrks, 
 			       const pat::MET *missEt, ReducedMETComputer *redmet_std, 
 			       vector<LorentzVector> &jetV, vector<LorentzVector> &selJetV) {
@@ -577,15 +721,15 @@ void ZZllvvAnalyzer::fillPlots(string cutString, const reco::Vertex *pv,
   hEventCounter->Fill(cutN, theWeight);
   hNVertexAll->Fill(nVtx, theWeight);
   hNVertexGood->Fill(nGoodVtx, theWeight);
-  LorentzVector dileptMom=leadMu->p4()+subleadMu->p4();
+  LorentzVector dileptMom=leadLept->p4()+subleadLept->p4();
   hLeptLead[cutN]->FillNLept(nLeptons, theWeight);
-  hLeptLead[cutN]->Fill(leadMu, pv, theWeight);
+  hLeptLead[cutN]->Fill(leadLept, pv, nVtx, theWeight);
   hLeptSubLead[cutN]->FillNLept(nLeptons, theWeight);
-  hLeptSubLead[cutN]->Fill(subleadMu, pv, theWeight);
-  hSelectedTracks[cutN]->Fill(selectTrks, pv, theWeight);
-  hSelectedIsoTracks[cutN]->Fill(selectIsoTrks, pv, theWeight);
-  hDileptKin[cutN]->Fill(leadMu, subleadMu, theWeight);
-  hMETKin[cutN]->Fill(missEt->pt(), missEt->eta(), missEt->phi(), missEt->mass(), theWeight);  
+  hLeptSubLead[cutN]->Fill(subleadLept, pv, nVtx, theWeight);
+  hSelectedTracks[cutN]->Fill(selectTrks, pv, nVtx, theWeight);
+  hSelectedIsoTracks[cutN]->Fill(selectIsoTrks, pv, nVtx, theWeight);
+  hDileptKin[cutN]->Fill(leadLept, subleadLept, nVtx, theWeight);
+  hMETKin[cutN]->Fill(missEt->pt(), missEt->eta(), missEt->phi(), missEt->mass(), nVtx, theWeight);  
   hDileptMET[cutN]->Fill(dileptMom, missEt->p4(), theWeight);
   hRedMetStd[cutN]->Fill(redmet_std, missEt->pt(), nVtx, theWeight);
   hJetKin[cutN]->FillNObj(jetV.size(), theWeight);
@@ -593,10 +737,10 @@ void ZZllvvAnalyzer::fillPlots(string cutString, const reco::Vertex *pv,
   if(debug) {
     cout << " - Cut n. " << cutN << ": " << cutString.c_str() << endl;
     cout << " - Weight: " << theWeight << endl;
-    cout << " - Lead Mu (pt, eta, phi) = (" 
-	 << leadMu->pt() << ", " << leadMu->eta() << ", " << leadMu->phi() << ")" << endl;
-    cout << " - Sublead Mu (pt, eta, phi) = (" 
-	 << subleadMu->pt() << ", " << subleadMu->eta() << ", " << subleadMu->phi() << ")" << endl;
+    cout << " - Lead Lept (pt, eta, phi) = (" 
+	 << leadLept->pt() << ", " << leadLept->eta() << ", " << leadLept->phi() << ")" << endl;
+    cout << " - Sublead Lept (pt, eta, phi) = (" 
+	 << subleadLept->pt() << ", " << subleadLept->eta() << ", " << subleadLept->phi() << ")" << endl;
     cout << " - MET (pt, eta, phi, mass) = (" 
 	 << missEt->pt() << ", " << missEt->eta() << ", " << missEt->phi() << ", " << missEt->mass() << ")" << endl;
     cout << " - RedMET [GeV] = " << missEt->pt() << endl;
@@ -606,7 +750,7 @@ void ZZllvvAnalyzer::fillPlots(string cutString, const reco::Vertex *pv,
   double leadJetPt=0;
   int leadJet=-1;
   for(unsigned int nj=0; nj<jetV.size(); ++nj) {
-    hJetKin[cutN]->Fill(jetV[nj].pt(), jetV[nj].eta(), jetV[nj].phi(), jetV[nj].mass(), theWeight);
+    hJetKin[cutN]->Fill(jetV[nj].pt(), jetV[nj].eta(), jetV[nj].phi(), jetV[nj].mass(), nVtx, theWeight);
     if(jetV[nj].pt()>leadJetPt) {
       leadJet=nj;
       leadJetPt=jetV[nj].pt();
@@ -619,7 +763,7 @@ void ZZllvvAnalyzer::fillPlots(string cutString, const reco::Vertex *pv,
     cout << "                   (pt, eta, phi, mass)" << endl;
   }
   for(unsigned int nj=0; nj<selJetV.size(); ++nj) {
-    hSelJetKin[cutN]->Fill(selJetV[nj].pt(), selJetV[nj].eta(), selJetV[nj].phi(), selJetV[nj].mass(), theWeight);
+    hSelJetKin[cutN]->Fill(selJetV[nj].pt(), selJetV[nj].eta(), selJetV[nj].phi(), selJetV[nj].mass(), nVtx, theWeight);
     if(debug) cout << "       sel jet #" << nj << ": (" << selJetV[nj].pt() << ", " << selJetV[nj].eta() 
   		   << ", " << selJetV[nj].phi() << ", " << selJetV[nj].mass() << ")" << endl;    
   }
@@ -723,3 +867,11 @@ vector<double> ZZllvvAnalyzer::makePuDistr(const ParameterSet& pSet) {
   }
   return result;
 }
+
+void ZZllvvAnalyzer::resetFlags() {
+  for(map<string, int>::iterator it=passedCuts.begin(); 
+      it!=passedCuts.end(); ++it) {
+    it->second=1;
+  }
+}
+
