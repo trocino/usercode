@@ -169,7 +169,8 @@ void ZZllvvOptimizationAnalyzer::analyze(const Event& event, const EventSetup& e
   Handle<reco::VertexCollection> offlinePrimVertices;
   event.getByLabel("offlinePrimaryVertices", offlinePrimVertices);  
   std::vector<reco::VertexRef> selVertices = vertex::filter(offlinePrimVertices,vertexSelection);
-  if(debug) cout << "# of vertices: " << selVertices.size() << endl;;
+  int nVert=selVertices.size();
+  if(debug) cout << "# of vertices: " << nVert << endl;;
 
 
 
@@ -226,14 +227,14 @@ void ZZllvvOptimizationAnalyzer::analyze(const Event& event, const EventSetup& e
 
   const pat::MET *met = h.getAs<pat::MET>("met");
   if(debug) cout << "\t met:" << met->pt() << ";" << met->phi() << endl;
-  hMETKin__cut0->Fill(met->pt(), met->eta(), met->phi(), met->mass(), weight);
+  hMETKin__cut0->Fill(met->pt(), met->eta(), met->phi(), met->mass(), nVert, weight);
 
   vector<LorentzVector> jetMomenta;
 
   for (pat::eventhypothesis::Looper<pat::Jet> jet = h.loopAs<pat::Jet>("jet"); jet; ++jet) {
     if(debug) cout << "\t jet: " << jet->pt() << ";" << jet->eta() << ";" << jet->phi() << std::endl;
     jetMomenta.push_back(jet->p4());
-    hJetKin__cut0->Fill(jet->pt(), jet->eta(), jet->phi(), jet->mass(), weight);
+    hJetKin__cut0->Fill(jet->pt(), jet->eta(), jet->phi(), jet->mass(), nVert, weight);
   }
   hJetKin__cut0->FillNObj(jetMomenta.size(), weight);
   if(debug) cout << "# of jets: " << jetMomenta.size() << endl;
@@ -262,9 +263,9 @@ void ZZllvvOptimizationAnalyzer::analyze(const Event& event, const EventSetup& e
   LorentzVector diLeptonMom = leadLeptMom + subLeadLeptMom;
 
 
-  hMuonLead__cut0->Fill(muonLead, vtx, weight);
-  hMuonSubLead__cut0->Fill(muonSubLead, vtx, weight);
-  hDiLeptKin__cut0->Fill(diLeptonMom.pt(), diLeptonMom.eta(), diLeptonMom.phi(), diLeptonMom.mass(), weight);
+  hMuonLead__cut0->Fill(lep1, vtx, nVert, weight);
+  hMuonSubLead__cut0->Fill(lep2, vtx, nVert, weight);
+  hDiLeptKin__cut0->Fill(diLeptonMom.pt(), diLeptonMom.eta(), diLeptonMom.phi(), diLeptonMom.mass(), nVert, weight);
 
   
 
@@ -291,10 +292,10 @@ void ZZllvvOptimizationAnalyzer::analyze(const Event& event, const EventSetup& e
   // cut1: apply mass window on the Z mass
   hEvtCounter->Fill(6);
   
-  hMuonLead__cut1->Fill(muonLead, vtx, weight);
-  hMuonSubLead__cut1->Fill(muonSubLead, vtx, weight);
-  hDiLeptKin__cut1->Fill(diLeptonMom.pt(), diLeptonMom.eta(), diLeptonMom.phi(), diLeptonMom.mass(), weight);
-  hMETKin__cut1->Fill(met->pt(), met->eta(), met->phi(), met->mass(), weight);
+  hMuonLead__cut1->Fill(lep1, vtx, nVert, weight);
+  hMuonSubLead__cut1->Fill(lep2, vtx, nVert, weight);
+  hDiLeptKin__cut1->Fill(diLeptonMom.pt(), diLeptonMom.eta(), diLeptonMom.phi(), diLeptonMom.mass(), nVert, weight);
+  hMETKin__cut1->Fill(met->pt(), met->eta(), met->phi(), met->mass(), nVert, weight);
   for(unsigned int hh=0; hh<nCmb; ++hh) {
 //     hRedMetStd__cut1[hh]->Fill(redMETComputer__std[hh]->reducedMET(),
 // 			      redMETComputer__std[hh]->reducedMETComponents().first, redMETComputer__std[hh]->reducedMETComponents().second, 
@@ -309,7 +310,7 @@ void ZZllvvOptimizationAnalyzer::analyze(const Event& event, const EventSetup& e
 
   for (pat::eventhypothesis::Looper<pat::Jet> jet = h.loopAs<pat::Jet>("jet"); jet; ++jet) {
     if(debug) cout << "\t jet: " << jet->pt() << ";" << jet->eta() << ";" << jet->phi() << std::endl;
-    hJetKin__cut1->Fill(jet->pt(), jet->eta(), jet->phi(), jet->mass(), weight);
+    hJetKin__cut1->Fill(jet->pt(), jet->eta(), jet->phi(), jet->mass(), nVert, weight);
   }
   hJetKin__cut1->FillNObj(jetMomenta.size(), weight);
 
