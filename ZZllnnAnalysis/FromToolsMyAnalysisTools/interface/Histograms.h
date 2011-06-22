@@ -27,7 +27,9 @@
 #include "DataFormats/Math/interface/deltaR.h"
 //#include "PhysicsTools/CandUtils/interface/Booster.h"
 #include "CMGTools/HtoZZ2l2nu/interface/Utils.h"
+#include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "CMGTools/HtoZZ2l2nu/interface/ReducedMETComputer.h"
@@ -39,11 +41,14 @@ using namespace std;
 class HistoKin {
 public:
   HistoKin(std::string name) : theName(name) {
-    hPt = new TH1F(theName+"_hPt","Pt (GeV)",100,0,200);
-    hEta = new TH1F(theName+"_hEta","Eta",50,-5,5);
-    hPhi = new TH1F(theName+"_hPhi","Phi (rad)",100, -3.15, 3.15);
-    hMass = new TH1F(theName+"_hMass","Mass (GeV)", 200, 0., 500.);
-    hNObj = new TH1F(theName+"_hNObj","# objects", 50, -0.5, 49.5);
+    hPt=new TH1F(theName+"_hPt", "p_{T}", 100, 0. , 200.);
+    hPtOverNVtx=new TH1F(theName+"_hPtOverNVtx", "p_{T}/n. vertices", 100, 0., 100.);
+    hPtVsNVtx=new TH2F(theName+"_hPtVsNVtx", "p_{T} vs. n. vertices", 50, -0.5, 49.5, 100, 0., 200.);
+    hPtOverNVtxVsNVtx=new TH2F(theName+"_hPtOverNVtxVsNVtx", "p_{T}/n. vertices vs. n. vertices", 50, -0.5, 49.5, 100, 0., 100.);
+    hEta=new TH1F(theName+"_hEta","Eta",50,-5,5);
+    hPhi=new TH1F(theName+"_hPhi","Phi (rad)",100, -3.15, 3.15);
+    hMass=new TH1F(theName+"_hMass","Mass (GeV)", 200, 0., 500.);
+    hNObj=new TH1F(theName+"_hNObj","# objects", 50, -0.5, 49.5);
     hPt->Sumw2();
     hEta->Sumw2();
     hPhi->Sumw2();
@@ -54,6 +59,9 @@ public:
 
   HistoKin() : theName("") {
     hPt = 0;
+    hPtOverNVtx = 0;
+    hPtVsNVtx = 0;
+    hPtOverNVtxVsNVtx = 0;
     hEta = 0;
     hPhi = 0;
     hMass = 0;
@@ -64,6 +72,9 @@ public:
 
   HistoKin(std::string name, TFile *file) : theName(name) {
     hPt = (TH1F *) file->Get(theName+"_hPt");
+    hPtOverNVtx = (TH1F *) file->Get(theName+"_hPtOverNVtx");
+    hPtVsNVtx = (TH2F *) file->Get(theName+"_hPtVsNVtx");
+    hPtOverNVtxVsNVtx = (TH2F *) file->Get(theName+"_hPtOverNVtxVsNVtx");
     hEta = (TH1F *) file->Get(theName+"_hEta");
     hPhi = (TH1F *) file->Get(theName+"_hPhi");
     hMass = (TH1F *) file->Get(theName+"_hMass");
@@ -77,6 +88,9 @@ public:
     ret->theName = name;
 
     if(hPt != 0) hPt->Clone((ret->theName+"_hPt").Data());
+    if(hPtOverNVtx != 0) hPtOverNVtx->Clone((ret->theName+"_hPtOverNVtx").Data());
+    if(hPtVsNVtx != 0)  hPtVsNVtx->Clone((ret->theName+"_hPtVsNVtx").Data());
+    if(hPtOverNVtxVsNVtx != 0)  hPtOverNVtxVsNVtx->Clone((ret->theName+"_hPtOverNVtxVsNVtx").Data());
     if(hEta != 0) hEta->Clone((ret->theName+"_hEta").Data());
     if(hPhi != 0) hPhi->Clone((ret->theName+"_hPhi").Data());
     if(hMass != 0) hPhi->Clone((ret->theName+"_hMass").Data());
@@ -89,6 +103,9 @@ public:
 
   void Add(const HistoKin* histSet) {
     if(hPt != 0) hPt->Add(histSet->hPt);
+    if(hPtOverNVtx != 0) hPtOverNVtx->Add(hPtOverNVtx);
+    if(hPtVsNVtx != 0) hPtVsNVtx->Add(hPtVsNVtx);
+    if(hPtOverNVtxVsNVtx != 0) hPtOverNVtxVsNVtx->Add(hPtOverNVtxVsNVtx);
     if(hEta != 0) hEta->Add(histSet->hEta);
     if(hPhi != 0) hPhi->Add(histSet->hPhi);
     if(hMass != 0) hPhi->Add(histSet->hMass);
@@ -100,6 +117,9 @@ public:
 
   void Scale(double scaleFact) {
     if(hPt != 0) hPt->Scale(scaleFact);
+    if(hPtOverNVtx != 0) hPtOverNVtx->Scale(scaleFact);
+    if(hPtVsNVtx != 0) hPtVsNVtx->Scale(scaleFact);
+    if(hPtOverNVtxVsNVtx != 0) hPtOverNVtxVsNVtx->Scale(scaleFact);
     if(hEta != 0) hEta->Scale(scaleFact);
     if(hPhi != 0) hPhi->Scale(scaleFact);
     if(hMass != 0) hMass->Scale(scaleFact);
@@ -110,6 +130,9 @@ public:
 
   void Write() {
     if(hPt != 0) hPt->Write();
+    if(hPtOverNVtx != 0) hPtOverNVtx->Write();
+    if(hPtVsNVtx != 0) hPtVsNVtx->Write();
+    if(hPtOverNVtxVsNVtx != 0) hPtOverNVtxVsNVtx->Write();
     if(hEta != 0) hEta->Write();
     if(hPhi != 0) hPhi->Write();
     if(hMass != 0) hMass->Write();
@@ -117,8 +140,11 @@ public:
 
   }
   
-  void Fill(double pt, double eta, double phi, double mass, double weight) {
+  void Fill(double pt, double eta, double phi, double mass, int nVtx, double weight) {
     hPt->Fill(pt, weight);
+    if(nVtx!=0) hPtOverNVtx->Fill(pt/nVtx, weight);
+    hPtVsNVtx->Fill(nVtx, pt, weight);
+    if(nVtx!=0) hPtOverNVtxVsNVtx->Fill(nVtx, pt/nVtx, weight);
     hEta->Fill(eta, weight);
     hPhi->Fill(phi, weight);
     hMass->Fill(mass, weight);
@@ -136,6 +162,9 @@ public:
   TString theName;
 
   TH1F *hPt;
+  TH1F *hPtOverNVtx;
+  TH2F *hPtVsNVtx;
+  TH2F *hPtOverNVtxVsNVtx;
   TH1F *hEta;
   TH1F *hPhi;
   TH1F *hMass;
@@ -152,7 +181,7 @@ public:
     hRelIso    = new TH1F(theName+"_hRelIso","Relative isolation",100,0,1);
     hDxy       = new TH1F(theName+"_hDxy","#Delta_{xy}", 100, 0., 0.1);
     hDz        = new TH1F(theName+"_hDz","#Delta_{z}", 100, 0., 0.5);
-    hType      = new TH1F(theName+"_hType","Muon type", 3, 0, 3);
+    hType      = new TH1F(theName+"_hType","Lepton type", 4, -1.5, 2.5);
     hNLept     = new TH1F(theName+"_hNLept","# leptons", 12, -0.5, 11.5);
     hNPixelHits = new TH1F(theName+"_hNPixelHits","# pixel hits", 10, -0.5, 9.5);
     hNTkHits    = new TH1F(theName+"_hNTkHits","# Tk hits", 40, -0.5, 39.5);
@@ -277,22 +306,31 @@ public:
   
   
 #ifndef ROOTANALYSIS
-  void Fill(const pat::Muon * muon, const reco::Vertex *vtx, double weight) {
-    
-    double relIso = Utils::computeRelIsolation(muon);
-    int type  = Utils::muonType(muon);
-    reco::TrackRef muonTrack = muon->innerTrack();
-    double dz = fabs(muonTrack->dz(vtx->position()));
-    double dxy = fabs(muonTrack->dxy(vtx->position()));
+  void Fill(const reco::CandidatePtr lept, const reco::Vertex *vtx, int nVtx, double weight) {
 
-    Fill(muon->pt(), muon->eta(), muon->phi(),
+    const pat::Muon *muon=dynamic_cast<const pat::Muon*>(lept.get());
+    const pat::Electron *ele=dynamic_cast<const pat::Electron*>(lept.get());
+    if(muon==0 && ele==0) {
+      cout << "[Histograms] *** Error: lepton is neither a muon nor an electron!" << endl;
+      throw std::exception();
+    }
+    double relIso = (muon ? Utils::computeRelIsolation(muon) : Utils::computeRelIsolation(ele));
+    int type = (muon ? Utils::muonType(muon) : Utils::muonType(ele));
+    const reco::Track *track=(muon ? muon->track().get() : ele->gsfTrack().get());
+    double dz=fabs(track->dz(vtx->position()));
+    double dxy=fabs(track->dxy(vtx->position()));
+
+    double nPxhits=track->hitPattern().numberOfValidPixelHits();
+    double nTkhits=track->hitPattern().numberOfValidTrackerHits();
+    double nMuonHits=(muon ? track->hitPattern().numberOfValidMuonHits() : 0);
+    double nMatches=(muon ? muon->numberOfMatches() : 0);
+
+    Fill(lept->pt(), lept->eta(), lept->phi(),
 	 relIso,
 	 dz, dxy,
 	 type,
-	 muonTrack->hitPattern().numberOfValidPixelHits(),
-	 muonTrack->hitPattern().numberOfValidTrackerHits(),
-	 muon->globalTrack()->hitPattern().numberOfValidMuonHits(),
-	 muon->numberOfMatches(),
+	 nPxhits, nTkhits, nMuonHits, nMatches,
+	 nVtx, 
 	 weight);
 
   }
@@ -305,8 +343,9 @@ public:
 	    double dxy, double dz,
 	    double type,
 	    double nPxhits, double nTkhits, double nMuonHits, double nMatches,
+	    int nVtx, 
 	    double weight) {
-    hKin->Fill(pt, eta, phi, 1, weight);
+    hKin->Fill(pt, eta, phi, 1, nVtx, weight);
     hRelIso->Fill(relIso, weight);
     hDxy->Fill(dxy, weight);
     hDz->Fill(dz, weight);
@@ -454,9 +493,9 @@ public:
   
   
 #ifndef ROOTANALYSIS
-  void Fill(reco::MuonRefVector &tracks, const reco::Vertex *vtx, double weight) {
+  void Fill(reco::MuonRefVector &tracks, const reco::Vertex *vtx, int nVtx, double weight) {
     for(reco::muon_iterator it=tracks.begin(); it!=tracks.end(); ++it) {
-      hKin->Fill((*it)->pt(), (*it)->eta(), (*it)->phi(), 1, weight);
+      hKin->Fill((*it)->pt(), (*it)->eta(), (*it)->phi(), 1, nVtx, weight);
       hIsoNTracks->Fill( (*it)->isolationR03().nTracks, weight );
       hTrackIso->Fill( (*it)->isolationR03().sumPt, weight );
       hTrackRelIso->Fill( (*it)->isolationR03().sumPt/(*it)->pt(), weight );
@@ -506,6 +545,8 @@ public:
     hDeltaR     = new TH1F(theName+"_hDeltaR","#DeltaR(1, 1)", 100, 0., 6.);
     hAngle      = new TH1F(theName+"_hAngle","angle(1, 2)", 100, 0., 3.15);
     hCosAngle   = new TH1F(theName+"_hCosAngle","cosine of angle(1, 2)", 100, -1., 1.);
+    //hInvMass    = new TH1F(theName+"_hInvMass", 100, 0., 150.);
+    hTransMass  = new TH1F(theName+"_hTransMass", "Transverse mass", 100, 0., 500.);
 
     hDeltaPhi->Sumw2();
     hDeltaEta->Sumw2();
@@ -513,6 +554,8 @@ public:
     hDeltaR->Sumw2();
     hAngle->Sumw2();
     hCosAngle->Sumw2();
+    //hInvMass->Sumw2();
+    hTransMass->Sumw2();
   }
 
 
@@ -523,6 +566,8 @@ public:
     hDeltaR     = 0;
     hAngle      = 0;
     hCosAngle   = 0;
+    //hInvMass    = 0;
+    hTransMass  = 0;
   }
 
 
@@ -533,6 +578,8 @@ public:
     hDeltaR     = (TH1F *)file->Get(theName+"_hDeltaR");
     hAngle      = (TH1F *)file->Get(theName+"_hAngle");
     hCosAngle   = (TH1F *)file->Get(theName+"_hCosAngle");
+    //hInvMass    = (TH1F *)file->Get(theName+"_hInvMass");
+    hTransMass  = (TH1F *)file->Get(theName+"_hTransMass");
  }
 
 
@@ -543,6 +590,8 @@ public:
     if(hDeltaR     != 0) hDeltaR->Add(histSet->hDeltaR);
     if(hAngle      != 0) hAngle->Add(histSet->hAngle);
     if(hCosAngle   != 0) hCosAngle->Add(histSet->hCosAngle);
+    //if(hInvMass    != 0) hInvMass->Add(histSet->hInvMass);
+    if(hTransMass  != 0) hTransMass->Add(histSet->hTransMass);
   }
 
   void Scale(double scaleFact) {
@@ -552,6 +601,8 @@ public:
     if(hDeltaR     != 0) hDeltaR->Scale(scaleFact);
     if(hAngle      != 0) hAngle->Scale(scaleFact);
     if(hCosAngle   != 0) hCosAngle->Scale(scaleFact);
+    //if(hInvMass    != 0) hInvMass->Scale(scaleFact);
+    if(hTransMass  != 0) hTransMass->Scale(scaleFact);
   }
 
 
@@ -562,6 +613,8 @@ public:
     if(hDeltaR     != 0) hDeltaR->Write();
     if(hAngle      != 0) hAngle->Write();
     if(hCosAngle   != 0) hCosAngle->Write();
+    //if(hInvMass    != 0) hInvMass->Write();
+    if(hTransMass  != 0) hTransMass->Write();
   }
   
   
@@ -576,6 +629,12 @@ public:
     hDeltaR->Fill( deltaR( tm1.eta(), tm1.phi(), tm2.eta(), tm2.phi() ), weight );
     hAngle->Fill( TMath::ACos( tm1.Unit().Dot(tm2.Unit()) ), weight );
     hCosAngle->Fill( tm1.Unit().Dot(tm2.Unit()), weight );
+    //hInvMass->Fill(, weight );
+    double e1=sqrt( tm1.perp2() + 91.1876*91.1876 );
+    double e2=sqrt( tm2.perp2() + 91.1876*91.1876 );
+    double etot=e1+e2;
+    double pt2tot=(tm1+tm2).perp2();
+    hTransMass->Fill( sqrt(etot*etot - pt2tot), weight );
   }
 #endif
 
@@ -591,7 +650,8 @@ public:
   TH1F *hDeltaR;
   TH1F *hAngle;
   TH1F *hCosAngle;
-
+  //TH1F *hInvMass;   // Hypothesis: ZZ
+  TH1F *hTransMass; // Hypothesis: ZZ
 };
 
 
@@ -660,6 +720,10 @@ public:
     hCmCosThetaS->Sumw2();
     hCmCosThetaP->Sumw2();
     hCmCosThetaN->Sumw2();
+
+    // floats
+    dileptLeadDeltaPhi=0.;
+    leptMinusCmCosTheta=0.;
  }
 
 
@@ -689,6 +753,11 @@ public:
     hCmCosThetaS = 0;
     hCmCosThetaP = 0;
     hCmCosThetaN = 0;
+
+    // floats
+    dileptLeadDeltaPhi=0.;
+    leptMinusCmCosTheta=0.;
+
   }
 
 
@@ -814,13 +883,13 @@ public:
   
   
 #ifndef ROOTANALYSIS
-  void Fill(const pat::Muon *lmu, const pat::Muon *smu, double weight) {
+  void Fill(const reco::CandidatePtr llep, const reco::CandidatePtr slep, int nVtx, double weight) {
 
-    reco::Candidate::LorentzVector lfm=lmu->p4();
-    reco::Candidate::LorentzVector sfm=smu->p4();
+    reco::Candidate::LorentzVector lfm=llep->p4();
+    reco::Candidate::LorentzVector sfm=slep->p4();
     reco::Candidate::LorentzVector dfm=lfm+sfm;
 
-    hKin->Fill(dfm.pt(), dfm.eta(), dfm.phi(), dfm.mass(), weight );
+    hKin->Fill(dfm.pt(), dfm.eta(), dfm.phi(), dfm.mass(), nVtx, weight );
 
     reco::Candidate::Vector ltm(lfm.px(), lfm.py(), lfm.pz());
     reco::Candidate::Vector stm(sfm.px(), sfm.py(), sfm.pz());
@@ -832,16 +901,16 @@ public:
     reco::Candidate::LorentzVector scfm=booster(sfm);
     reco::Candidate::Vector lctm(lcfm.px(), lcfm.py(), lcfm.pz());
     reco::Candidate::Vector sctm(scfm.px(), scfm.py(), scfm.pz());
-    //     Booster booster(betaVect);
-    //     pat::Muon *lcmu=(pat::Muon *)lmu->clone();
-    //     pat::Muon *scmu=(pat::Muon *)smu->clone();
-    //     booster.set(*lcmu);
-    //     booster.set(*scmu);
-    //     reco::Candidate::Vector lctm(lcmu->px(), lcmu->py(), lcmu->pz());
-    //     reco::Candidate::Vector sctm(scmu->px(), scmu->py(), scmu->pz());
+    // Booster booster(betaVect);
+    // pat::Muon *lcmu=(pat::Muon *)lmu->clone();
+    // pat::Muon *scmu=(pat::Muon *)smu->clone();
+    // booster.set(*lcmu);
+    // booster.set(*scmu);
+    // reco::Candidate::Vector lctm(lcmu->px(), lcmu->py(), lcmu->pz());
+    // reco::Candidate::Vector sctm(scmu->px(), scmu->py(), scmu->pz());
 
     reco::Candidate::Vector ptm, ntm, pctm, nctm;
-    if(lmu->charge()>0) {ptm=ltm; ntm=stm; pctm=lctm; nctm=sctm;}
+    if(llep->charge()>0) {ptm=ltm; ntm=stm; pctm=lctm; nctm=sctm;}
     else {ptm=stm; ntm=ltm; pctm=sctm; nctm=lctm;}
 
     hDeltaPhiLS->Fill( deltaPhi(ltm.phi(), stm.phi()), weight );
@@ -871,6 +940,9 @@ public:
     hCmCosThetaP->Fill(pctm.Unit().z(), weight );
     hCmCosThetaN->Fill(nctm.Unit().z(), weight );
 
+    // Some (public) data member for easy access
+    dileptLeadDeltaPhi=deltaPhi(dtm.phi(), ltm.phi());
+    leptMinusCmCosTheta=nctm.Unit().z();
   }
 #endif
 
@@ -910,16 +982,32 @@ public:
   TH1F *hCmCosThetaP;
   TH1F *hCmCosThetaN;
 
+  // Some (public) data member for easy access
+  float dileptLeadDeltaPhi;
+  float leptMinusCmCosTheta;
+
 };
 
 
 class HistoRedMET {
 public:
   HistoRedMET(std::string name) : theName(name) {
-    hRedMET = new TH1F(theName+ "_hRedMET","title",100,0,150);
-    hRedMETVsNVtx = new TH2F(theName+ "_hRedMETVsNVtx","title", 100, -0.5, 99.5, 100, 0., 150.);
-    hRedMETCompLong = new TH1F(theName+ "_hRedMETCompLong","title",150,0,150);
-    hRedMETCompPerp = new TH1F(theName+ "_hRedMETCompPerp","title",150,0,150);
+    hRedMET         = new TH1F(theName+"_hRedMET",         "title", 100, 0., 100.);
+    hRedMETCompLong = new TH1F(theName+"_hRedMETCompLong", "title", 100, 0., 100.);
+    hRedMETCompPerp = new TH1F(theName+"_hRedMETCompPerp", "title", 100, 0., 100.);
+
+    hRedMETOverNVtx         = new TH1F(theName+"_hRedMETOverNVtx",         "title", 100, 0., 50.);
+    hRedMETCompLongOverNVtx = new TH1F(theName+"_hRedMETCompLongOverNVtx", "title", 100, 0., 50.);
+    hRedMETCompPerpOverNVtx = new TH1F(theName+"_hRedMETCompPerpOverNVtx", "title", 100, 0., 50.);
+
+    hRedMETVsNVtx         = new TH2F(theName+"_hRedMETVsNVtx",         "title", 50, -0.5, 49.5, 100, 0., 100.);
+    hRedMETCompLongVsNVtx = new TH2F(theName+"_hRedMETCompLongVsNVtx", "title", 50, -0.5, 49.5, 100, 0., 100.);
+    hRedMETCompPerpVsNVtx = new TH2F(theName+"_hRedMETCompPerpVsNVtx", "title", 50, -0.5, 49.5, 100, 0., 100.);
+
+    hRedMETOverNVtxVsNVtx         = new TH2F(theName+"_hRedMETOverNVtxVsNVtx",         "title", 50, -0.5, 49.5, 100, 0., 50.);
+    hRedMETCompLongOverNVtxVsNVtx = new TH2F(theName+"_hRedMETCompLongOverNVtxVsNVtx", "title", 50, -0.5, 49.5, 100, 0., 50.);
+    hRedMETCompPerpOverNVtxVsNVtx = new TH2F(theName+"_hRedMETCompPerpOverNVtxVsNVtx", "title", 50, -0.5, 49.5, 100, 0., 50.);
+
     hRecoilCompLong = new TH1F(theName+ "_hRecoilCompLong","title",150,-150,150);
     hRecoilCompPerp = new TH1F(theName+ "_hRecoilCompPerp","title",150,-150,150);
     hMetCompLong = new TH1F(theName+ "_hMetCompLong","title",150,-150,150);
@@ -949,9 +1037,17 @@ public:
 
 
     hRedMET->Sumw2();
-    hRedMETVsNVtx->Sumw2();
     hRedMETCompLong->Sumw2();
     hRedMETCompPerp->Sumw2();
+    hRedMETOverNVtx->Sumw2();
+    hRedMETCompLongOverNVtx->Sumw2();
+    hRedMETCompPerpOverNVtx->Sumw2();
+    hRedMETVsNVtx->Sumw2();
+    hRedMETCompLongVsNVtx->Sumw2();
+    hRedMETCompPerpVsNVtx->Sumw2();
+    hRedMETOverNVtxVsNVtx->Sumw2();
+    hRedMETCompLongOverNVtxVsNVtx->Sumw2();
+    hRedMETCompPerpOverNVtxVsNVtx->Sumw2();
     hRecoilCompLong->Sumw2();
     hRecoilCompPerp->Sumw2();
     hMetCompLong->Sumw2();
@@ -975,9 +1071,17 @@ public:
 
   HistoRedMET() : theName("") {
     hRedMET = 0;
-    hRedMETVsNVtx = 0;
     hRedMETCompLong = 0;
     hRedMETCompPerp = 0;
+    hRedMETOverNVtx = 0;
+    hRedMETCompLongOverNVtx = 0;
+    hRedMETCompPerpOverNVtx = 0;
+    hRedMETVsNVtx = 0;
+    hRedMETCompLongVsNVtx = 0;
+    hRedMETCompPerpVsNVtx = 0;
+    hRedMETOverNVtxVsNVtx = 0;
+    hRedMETCompLongOverNVtxVsNVtx = 0;
+    hRedMETCompPerpOverNVtxVsNVtx = 0;
     hRecoilCompLong = 0;
     hRecoilCompPerp = 0;
     hMetCompLong = 0;
@@ -1001,10 +1105,18 @@ public:
 
 
   HistoRedMET(std::string name, TFile *file) : theName(name) {
-    hRedMET = (TH1F *) file->Get(theName+"_hRedMET");
-    hRedMETVsNVtx = (TH2F *) file->Get(theName+"_hRedMETVsNVtx");
+    hRedMET         = (TH1F *) file->Get(theName+"_hRedMET");
     hRedMETCompLong = (TH1F *) file->Get(theName+"_hRedMETCompLong");
     hRedMETCompPerp = (TH1F *) file->Get(theName+"_hRedMETCompPerp");
+    hRedMETOverNVtx         = (TH1F *) file->Get(theName+"_hRedMETOverNVtx");	     
+    hRedMETCompLongOverNVtx = (TH1F *) file->Get(theName+"_hRedMETCompLongOverNVtx");
+    hRedMETCompPerpOverNVtx = (TH1F *) file->Get(theName+"_hRedMETCompPerpOverNVtx");
+    hRedMETVsNVtx         = (TH2F *) file->Get(theName+"_hRedMETVsNVtx");
+    hRedMETCompLongVsNVtx = (TH2F *) file->Get(theName+"_hRedMETCompLongVsNVtx");
+    hRedMETCompPerpVsNVtx = (TH2F *) file->Get(theName+"_hRedMETCompPerpVsNVtx");
+    hRedMETOverNVtxVsNVtx         = (TH2F *) file->Get(theName+"_hRedMETOverNVtxVsNVtx");	 
+    hRedMETCompLongOverNVtxVsNVtx = (TH2F *) file->Get(theName+"_hRedMETCompLongOverNVtxVsNVtx");
+    hRedMETCompPerpOverNVtxVsNVtx = (TH2F *) file->Get(theName+"_hRedMETCompPerpOverNVtxVsNVtx");
     hRecoilCompLong = (TH1F *) file->Get(theName+"_hRecoilCompLong");
     hRecoilCompPerp = (TH1F *) file->Get(theName+"_hRecoilCompPerp");
     hMetCompLong = (TH1F *) file->Get(theName+"_hMetCompLong");
@@ -1033,10 +1145,18 @@ public:
     HistoRedMET *ret = new HistoRedMET();
     ret->theName = name;
 
-    if(hRedMET !=0) hRedMET->Clone((ret->theName+"_hRedMET").Data());
-    if(hRedMETVsNVtx !=0) hRedMETVsNVtx->Clone((ret->theName+"_hRedMETVsNVtx").Data());
-    if(hRedMETCompLong !=0) hRedMETCompLong->Clone((ret->theName+"_hRedMETCompLong").Data());
-    if(hRedMETCompPerp !=0) hRedMETCompPerp->Clone((ret->theName+"_hRedMETCompPerp").Data());
+    if(hRedMET!=0)         hRedMET->Clone((ret->theName+"_hRedMET").Data());
+    if(hRedMETCompLong!=0) hRedMETCompLong->Clone((ret->theName+"_hRedMETCompLong").Data());
+    if(hRedMETCompPerp!=0) hRedMETCompPerp->Clone((ret->theName+"_hRedMETCompPerp").Data());
+    if(hRedMETOverNVtx!=0)         hRedMETOverNVtx->Clone((ret->theName+"_hRedMETOverNVtx").Data());	    
+    if(hRedMETCompLongOverNVtx!=0) hRedMETCompLongOverNVtx->Clone((ret->theName+"_hRedMETCompLongOverNVtx").Data());
+    if(hRedMETCompPerpOverNVtx!=0) hRedMETCompPerpOverNVtx->Clone((ret->theName+"_hRedMETCompPerpOverNVtx").Data());
+    if(hRedMETVsNVtx!=0)         hRedMETVsNVtx->Clone((ret->theName+"_hRedMETVsNVtx").Data());	    
+    if(hRedMETCompLongVsNVtx!=0) hRedMETCompLongVsNVtx->Clone((ret->theName+"_hRedMETCompLongVsNVtx").Data());
+    if(hRedMETCompPerpVsNVtx!=0) hRedMETCompPerpVsNVtx->Clone((ret->theName+"_hRedMETCompPerpVsNVtx").Data());
+    if(hRedMETOverNVtxVsNVtx!=0)         hRedMETOverNVtxVsNVtx->Clone((ret->theName+"_hRedMETOverNVtxVsNVtx").Data());	
+    if(hRedMETCompLongOverNVtxVsNVtx!=0) hRedMETCompLongOverNVtxVsNVtx->Clone((ret->theName+"_hRedMETCompLongOverNVtxVsNVtx").Data());
+    if(hRedMETCompPerpOverNVtxVsNVtx!=0) hRedMETCompPerpOverNVtxVsNVtx->Clone((ret->theName+"_hRedMETCompPerpOverNVtxVsNVtx").Data());
     if(hRecoilCompLong !=0) hRecoilCompLong->Clone((ret->theName+"_hRecoilCompLong").Data());
     if(hRecoilCompPerp !=0) hRecoilCompPerp->Clone((ret->theName+"_hRecoilCompPerp").Data());
     if(hMetCompLong !=0) hMetCompLong->Clone((ret->theName+"_hMetCompLong").Data());
@@ -1061,10 +1181,18 @@ public:
 
 
   void Add(const HistoRedMET* histSet) {
-    if(hRedMET != 0) hRedMET->Add(histSet->hRedMET);
-    if(hRedMETVsNVtx != 0) hRedMETVsNVtx->Add(histSet->hRedMETVsNVtx);
-    if(hRedMETCompLong != 0) hRedMETCompLong->Add(histSet->hRedMETCompLong);
-    if(hRedMETCompPerp != 0) hRedMETCompPerp->Add(histSet->hRedMETCompPerp);
+    if(hRedMET!=0)         hRedMET->Add(histSet->hRedMET);
+    if(hRedMETCompLong!=0) hRedMETCompLong->Add(histSet->hRedMETCompLong);
+    if(hRedMETCompPerp!=0) hRedMETCompPerp->Add(histSet->hRedMETCompPerp);
+    if(hRedMETOverNVtx!=0)         hRedMETOverNVtx->Add(histSet->hRedMETOverNVtx);	    
+    if(hRedMETCompLongOverNVtx!=0) hRedMETCompLongOverNVtx->Add(histSet->hRedMETCompLongOverNVtx);
+    if(hRedMETCompPerpOverNVtx!=0) hRedMETCompPerpOverNVtx->Add(histSet->hRedMETCompPerpOverNVtx);
+    if(hRedMETVsNVtx!=0)         hRedMETVsNVtx->Add(histSet->hRedMETVsNVtx);	    
+    if(hRedMETCompLongVsNVtx!=0) hRedMETCompLongVsNVtx->Add(histSet->hRedMETCompLongVsNVtx);
+    if(hRedMETCompPerpVsNVtx!=0) hRedMETCompPerpVsNVtx->Add(histSet->hRedMETCompPerpVsNVtx);
+    if(hRedMETOverNVtxVsNVtx!=0)         hRedMETOverNVtxVsNVtx->Add(histSet->hRedMETOverNVtxVsNVtx);	
+    if(hRedMETCompLongOverNVtxVsNVtx!=0) hRedMETCompLongOverNVtxVsNVtx->Add(histSet->hRedMETCompLongOverNVtxVsNVtx);
+    if(hRedMETCompPerpOverNVtxVsNVtx!=0) hRedMETCompPerpOverNVtxVsNVtx->Add(histSet->hRedMETCompPerpOverNVtxVsNVtx);
     if(hRecoilCompLong != 0) hRecoilCompLong->Add(histSet->hRecoilCompLong);
     if(hRecoilCompPerp != 0) hRecoilCompPerp->Add(histSet->hRecoilCompPerp);
     if(hMetCompLong != 0) hMetCompLong->Add(histSet->hMetCompLong);
@@ -1087,10 +1215,18 @@ public:
 
 
   void Scale(double scaleFact) {
-    if(hRedMET != 0) hRedMET->Scale(scaleFact);
-    if(hRedMETVsNVtx != 0) hRedMETVsNVtx->Scale(scaleFact);
-    if(hRedMETCompLong != 0) hRedMETCompLong->Scale(scaleFact);
-    if(hRedMETCompPerp != 0) hRedMETCompPerp->Scale(scaleFact);
+    if(hRedMET!=0)         hRedMET->Scale(scaleFact);
+    if(hRedMETCompLong!=0) hRedMETCompLong->Scale(scaleFact);
+    if(hRedMETCompPerp!=0) hRedMETCompPerp->Scale(scaleFact);
+    if(hRedMETOverNVtx!=0)         hRedMETOverNVtx->Scale(scaleFact);
+    if(hRedMETCompLongOverNVtx!=0) hRedMETCompLongOverNVtx->Scale(scaleFact);
+    if(hRedMETCompPerpOverNVtx!=0) hRedMETCompPerpOverNVtx->Scale(scaleFact);
+    if(hRedMETVsNVtx!=0)         hRedMETVsNVtx->Scale(scaleFact);
+    if(hRedMETCompLongVsNVtx!=0) hRedMETCompLongVsNVtx->Scale(scaleFact);
+    if(hRedMETCompPerpVsNVtx!=0) hRedMETCompPerpVsNVtx->Scale(scaleFact);
+    if(hRedMETOverNVtxVsNVtx!=0)         hRedMETOverNVtxVsNVtx->Scale(scaleFact);
+    if(hRedMETCompLongOverNVtxVsNVtx!=0) hRedMETCompLongOverNVtxVsNVtx->Scale(scaleFact);
+    if(hRedMETCompPerpOverNVtxVsNVtx!=0) hRedMETCompPerpOverNVtxVsNVtx->Scale(scaleFact);
     if(hRecoilCompLong != 0) hRecoilCompLong->Scale(scaleFact);
     if(hRecoilCompPerp != 0) hRecoilCompPerp->Scale(scaleFact);
     if(hMetCompLong != 0) hMetCompLong->Scale(scaleFact);
@@ -1112,10 +1248,18 @@ public:
 
 
   void Write() {
-    if(hRedMET != 0) hRedMET->Write();
-    if(hRedMETVsNVtx != 0) hRedMETVsNVtx->Write();
-    if(hRedMETCompLong != 0) hRedMETCompLong->Write();
-    if(hRedMETCompPerp != 0) hRedMETCompPerp->Write();
+    if(hRedMET!=0)         hRedMET->Write();
+    if(hRedMETCompLong!=0) hRedMETCompLong->Write();
+    if(hRedMETCompPerp!=0) hRedMETCompPerp->Write();
+    if(hRedMETOverNVtx!=0)         hRedMETOverNVtx->Write();
+    if(hRedMETCompLongOverNVtx!=0) hRedMETCompLongOverNVtx->Write();
+    if(hRedMETCompPerpOverNVtx!=0) hRedMETCompPerpOverNVtx->Write();
+    if(hRedMETVsNVtx!=0)         hRedMETVsNVtx->Write();
+    if(hRedMETCompLongVsNVtx!=0) hRedMETCompLongVsNVtx->Write();
+    if(hRedMETCompPerpVsNVtx!=0) hRedMETCompPerpVsNVtx->Write();
+    if(hRedMETOverNVtxVsNVtx!=0)         hRedMETOverNVtxVsNVtx->Write();
+    if(hRedMETCompLongOverNVtxVsNVtx!=0) hRedMETCompLongOverNVtxVsNVtx->Write();
+    if(hRedMETCompPerpOverNVtxVsNVtx!=0) hRedMETCompPerpOverNVtxVsNVtx->Write();
     if(hRecoilCompLong != 0) hRecoilCompLong->Write();
     if(hRecoilCompPerp != 0) hRecoilCompPerp->Write();
     if(hMetCompLong != 0) hMetCompLong->Write();
@@ -1164,9 +1308,18 @@ public:
 	    unsigned int nVtx,
 	    double weight) {
     hRedMET->Fill(redmet, weight);
-    hRedMETVsNVtx->Fill(nVtx, redmet, weight);
     hRedMETCompLong->Fill(redmet_long, weight);
     hRedMETCompPerp->Fill(redmet_perp, weight);
+
+    if(nVtx!=0) hRedMETOverNVtx->Fill(redmet/nVtx, weight);
+    if(nVtx!=0) hRedMETCompLongOverNVtx->Fill(redmet_long/nVtx, weight);
+    if(nVtx!=0) hRedMETCompPerpOverNVtx->Fill(redmet_perp/nVtx, weight);
+    hRedMETVsNVtx->Fill(nVtx, redmet, weight);
+    hRedMETCompLongVsNVtx->Fill(nVtx, redmet_long, weight);
+    hRedMETCompPerpVsNVtx->Fill(nVtx, redmet_perp, weight);
+    if(nVtx!=0) hRedMETOverNVtxVsNVtx->Fill(nVtx, redmet/nVtx, weight);
+    if(nVtx!=0) hRedMETCompLongOverNVtxVsNVtx->Fill(nVtx, redmet_long/nVtx, weight);
+    if(nVtx!=0) hRedMETCompPerpOverNVtxVsNVtx->Fill(nVtx, redmet_perp/nVtx, weight);
     hRecoilCompLong->Fill(recoil_long, weight);
     hRecoilCompPerp->Fill(recoil_perp, weight);
     hMetCompLong->Fill(met_long, weight);
@@ -1193,9 +1346,17 @@ public:
   TString theName;
 
   TH1F *hRedMET;
-  TH2F *hRedMETVsNVtx;
   TH1F *hRedMETCompLong;
   TH1F *hRedMETCompPerp;
+  TH1F *hRedMETOverNVtx;
+  TH1F *hRedMETCompLongOverNVtx;
+  TH1F *hRedMETCompPerpOverNVtx;
+  TH2F *hRedMETVsNVtx;
+  TH2F *hRedMETCompLongVsNVtx;
+  TH2F *hRedMETCompPerpVsNVtx;
+  TH2F *hRedMETOverNVtxVsNVtx;
+  TH2F *hRedMETCompLongOverNVtxVsNVtx;
+  TH2F *hRedMETCompPerpOverNVtxVsNVtx;
   TH1F *hRecoilCompLong;
   TH1F *hRecoilCompPerp;
   TH1F *hMetCompLong;
