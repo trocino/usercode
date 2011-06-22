@@ -1,5 +1,5 @@
 /*
- *  $Date: 2011/06/01 18:02:26 $
+ *  $Date: 2011/06/10 11:26:09 $
  *  \author D. Trocino   - Northeastern University
  */
 
@@ -19,39 +19,41 @@ using namespace std;
 
 
 TString inputdir("/tmp/trocino/AllData");
-TString namefile("ZZllvvAnalyzer_0.root");
+TString namefile("ZZllvvAnalyzer_whatsample.root");
 
 TString outname("ZZllvvPlots.root");
 TString outdirname("ZZllvvPlots");
 
 // -- For plotMacro -- //
-//TString plotnametempl("DileptKin_whatever_hMass");
-//TString xlab("Dilepton inv. mass [GeV/c^{2}]");
-//TString plotnametempl("RedMetStd_whatever_hRedMET");
+TString plotnametempl("DileptKin_whatcut_hMass");
+TString xlab("Dilepton inv. mass [GeV/c^{2}]");
+//TString plotnametempl("RedMetStd_whatcut_hRedMET");
 //TString xlab("Reduced MET [GeV]");
-//TString plotnametempl("SelJetKin_whatever_hNObj");
+//TString plotnametempl("SelJetKin_whatcut_hNObj");
 //TString xlab("# selected jets");
-//TString plotnametempl("JetKin_whatever_hNObj");  // ALL jets
+//TString plotnametempl("JetKin_whatcut_hNObj");  // ALL jets
 //TString xlab("# jets");                          // ALL jets
-//TString plotnametempl("LeptonLead_whatever_hNLept");
+//TString plotnametempl("LeptonLead_whatcut_hNLept");
 //TString xlab("# extra leptons");
-//TString plotnametempl("SelectedTracks_whatever_hNTrack");
+//TString plotnametempl("SelectedTracks_whatcut_hNTrack");
 //TString xlab("# extra isolated tracks");
-//TString plotnametempl("LeptonLead_whatever_hPt");
+//TString plotnametempl("LeptonLead_whatcut_hPt");
 //TString xlab("Leading lepton p_{T} [GeV/c]");
-//TString plotnametempl("DileptKin_whatever_hCmCosThetaN");
+//TString plotnametempl("DileptKin_whatcut_hCmCosThetaN");
 //TString xlab("cos#theta*(l^{-})");
-//TString plotnametempl("DileptKin_whatever_hDeltaPhiDL");
+//TString plotnametempl("DileptKin_whatcut_hDeltaPhiDL");
 //TString xlab("#Delta#phi(dilept, lead) [rad]");
-TString plotnametempl("DileptKin_whatever_hPt");
-TString xlab("Dilepton p_{T} [GeV/c]");
+//TString plotnametempl("DileptKin_whatcut_hPt");
+//TString xlab("Dilepton p_{T} [GeV/c]");
+//TString plotnametempl("DileptMET_whatcut_hTransMass");
+//TString xlab("Transverse mass [GeV/c^{2}]");
 
 
 // -- For plotNumbers -- //
-//TString plotnamefix("EventCounter");
-//TString xlabN("");
-TString plotnamefix("PreEventCounter");
+TString plotnamefix("EventCounter");
 TString xlabN("");
+//TString plotnamefix("PreEventCounter");
+//TString xlabN("");
 //TString plotnamefix("hNVertexAll");
 //TString xlabN("# vertices");
 //TString plotnamefix("hNVertexGood");
@@ -72,7 +74,8 @@ bool plotData(false);
 bool drawAsHist(false);
 
 // -- Only for 2mu channel -- // 
-TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","TTJets_madgraph_Spring11"};
+//TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11"};
+TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","TTJets_madgraph_Spring11","TToBLNu_Spring11","ZZtoAnything_allBut2l2n_Spring11","DYToTauTau_M-20_Spring11","DYToMuMu_M-20_Spring11"};
 //TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","ZZtoAnything_allBut2l2n_Spring11","TTJets_madgraph_Spring11","TToBLNu_Spring11","WJetsToLNu_Spring11","DYToTauTau_M-20_Spring11","DYToMuMu_M-20_Spring11"};
 
 int sizeMc=sizeof(samplesMC)/sizeof(TString);
@@ -141,7 +144,7 @@ void plotMacro() {
 
   TString sampleData="AllData";
 
-  TString subdir[]={"cut1_Dilepton", "cut2_Mass-window", "cut3_RedMET-cut", "cut4_Jet-veto", "cut5_Lepton-veto"};
+  TString subdir[]={"cut1_Dilepton", "cut2_MassWindow", "cut3_RedMETcut", "cut4_JetVeto", "cut5_LeptonVeto"};
   int sizeSdir=sizeof(subdir)/sizeof(TString);
 
   vector<THStack *> stacks;
@@ -156,7 +159,7 @@ void plotMacro() {
   // Assuming all data files (from DoubleMu, DoubleElectron, MuEG streams) 
   // have been merged into a single file named "ZZllvvAnalyzer_AllData.root"
   TString namefiletmp=namefile;
-  namefiletmp.ReplaceAll("0", sampleData.Data());
+  namefiletmp.ReplaceAll("whatsample", sampleData.Data());
   TFile *fdata=new TFile((inputdir+"/"+namefiletmp).Data(), "READ");
 
   vector<float> maxV(sizeSdir, 0.);
@@ -165,7 +168,7 @@ void plotMacro() {
   //  for(vector<TString>::iterator sdr=subdir.begin(); sdr!=subdir.end(); ++sdr) {
   for(int j1=0; j1<sizeSdir; ++j1) {
     TString plotname=plotnametempl;
-    plotname.ReplaceAll("whatever", subdir[j1].Data());
+    plotname.ReplaceAll("whatcut", subdir[j1].Data());
     stacks.push_back(new THStack(("stack_"+plotname).Data(), plotname.Data()) );
     ccs.push_back( new TCanvas( ("canvas_"+plotname).Data(), ("canvas_"+subdir[j1]+"_"+plotname).Data(), 600, 600) );
     lleg.push_back(new TLegend(0.75, 0.6, 1., 1.));
@@ -197,14 +200,14 @@ void plotMacro() {
     // Old, not consistent with the output of "submission.py --copy"
     //    allFiles.push_back(new TFile((inputdir+samplesMC[idx1]+"/"+namefile).Data(), "READ"));
     TString namefilemctmp=namefile;
-    namefilemctmp.ReplaceAll("0", samplesMC[idx1].Data());
+    namefilemctmp.ReplaceAll("whatsample", samplesMC[idx1].Data());
     allFiles.push_back(new TFile((inputdir+"/"+namefilemctmp).Data(), "READ"));
     TFile *f=allFiles.back();
     //    for(vector<TString>::iterator sdr=subdir.begin(); sdr!=subdir.end(); ++sdr, ++idx2) {
     for(int idx2=0; idx2<sizeSdir; ++idx2) {
       TDirectoryFile *dir=(TDirectoryFile*)f->Get(subdir[idx2].Data());
       TString plotname=plotnametempl;
-      plotname.ReplaceAll("whatever", subdir[idx2].Data());
+      plotname.ReplaceAll("whatcut", subdir[idx2].Data());
       TH1F *h=(TH1F*)dir->Get(plotname.Data());
       //if(idx1==0) firstHisto[idx2]=h;
       h->SetName( ( samplesMC[idx1]+"_"+h->GetName() ).Data() );
@@ -339,7 +342,7 @@ void plotNumbers() {
   // Assuming all data files (from DoubleMu, DoubleElectron, MuEG streams) 
   // have been merged into a single file named "ZZllvvAnalyzer_AllData.root"
   TString namefiletmp=namefile;
-  namefiletmp.ReplaceAll("0", sampleData.Data());
+  namefiletmp.ReplaceAll("whatsample", sampleData.Data());
   TFile *fdata=new TFile((inputdir+"/"+namefiletmp).Data(), "READ");
   TH1F *hdata=(TH1F*)fdata->Get(plotnamefix.Data());
   if(plotData) {
@@ -369,7 +372,7 @@ void plotNumbers() {
     // Old, not consistent with the output of "submission.py --copy"
     //    allFiles.push_back(new TFile((inputdir+samplesMC[idx1]+"/"+namefile).Data(), "READ"));
     TString namefilemctmp=namefile;
-    namefilemctmp.ReplaceAll("0", samplesMC[idx1].Data());
+    namefilemctmp.ReplaceAll("whatsample", samplesMC[idx1].Data());
     allFiles.push_back(new TFile((inputdir+"/"+namefilemctmp).Data(), "READ"));
     TFile *f=allFiles.back();
     TH1F *h=(TH1F*)f->Get(plotnamefix.Data());
