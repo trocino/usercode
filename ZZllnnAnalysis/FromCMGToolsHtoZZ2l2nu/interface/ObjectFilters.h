@@ -27,7 +27,11 @@
 
 typedef ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<double> > LorentzVector;
 typedef std::vector<LorentzVector> LorentzVectorCollection;
-
+typedef std::pair<reco::VertexRef, reco::CandidatePtr> CandidateWithVertex;
+typedef std::vector<CandidateWithVertex> CandidateWithVertexCollection;
+typedef std::pair<reco::VertexRef, reco::Muon> TrackWithVertex;
+typedef std::vector<TrackWithVertex> TrackWithVertexCollection;
+typedef std::pair<reco::VertexRef, std::vector<reco::CandidatePtr> > DileptonWithVertex;
 
 namespace gen
 {
@@ -55,7 +59,7 @@ namespace vertex
     {
       reco::VertexRef bestvtx;
       double bestDz(1.0e7);
-      for(std::vector<reco::VertexRef>::iterator vIt = selVertices.begin(); vIt != selVertices.end(); vIt++)
+      for(std::vector<reco::VertexRef>::iterator vIt = selVertices.begin(); vIt != selVertices.end(); ++vIt)
 	{
 	  double dz = fabs( trk->dz( vIt->get()->position() ) );
 	  if( dz>bestDz ) continue;
@@ -68,24 +72,32 @@ namespace vertex
 
 namespace muon
 {
-  std::vector<reco::CandidatePtr> filter(edm::Handle<edm::View<reco::Candidate> > &hMu, const edm::ParameterSet &iConfig);
+  CandidateWithVertexCollection filter(edm::Handle<edm::View<reco::Candidate> > &hMu, 
+				       std::vector<reco::VertexRef> &selVtx, 
+				       const edm::ParameterSet &iConfig,
+				       const edm::EventSetup &iSetup);
 }
 
 namespace electron
 {
-  std::vector<reco::CandidatePtr> filter(edm::Handle<edm::View<reco::Candidate> > &hEle, edm::Handle<edm::View<reco::Candidate> > &hMu, const edm::ParameterSet &iConfig);
+  CandidateWithVertexCollection filter(edm::Handle<edm::View<reco::Candidate> > &hEle, 
+				       edm::Handle<edm::View<reco::Candidate> > &hMu, 
+				       std::vector<reco::VertexRef> &selVtx, 
+				       const edm::ParameterSet &iConfig,
+				       const edm::EventSetup &iSetup);
 }
 
 namespace dilepton
 {
   enum DileptonClassification {UNKNOWN=0,MUMU=1,EE=2,EMU=3};
-  std::pair<reco::VertexRef, std::vector<reco::CandidatePtr> > filter(std::vector<reco::CandidatePtr> &selLeptons, 
-								      std::vector<reco::VertexRef> &selVtx, 
-								      const edm::ParameterSet &iConfig,
-								      const edm::EventSetup &iSetup,
-								      double rho,
-								      std::vector<reco::CandidatePtr> &isolLeptons,
-								      std::map<TString, TH1D *> *controlHistos_=0);
+  DileptonWithVertex filter(CandidateWithVertexCollection &selLeptons, 
+			    std::vector<reco::VertexRef> &selVertices, 
+			    const edm::ParameterSet &iConfig,
+			    const edm::EventSetup &iSetup,
+			    double rho,
+			    CandidateWithVertexCollection &isolLeptons,
+			    std::map<TString, TH1D *> *controlHistos_=0);
+
   int classify(std::vector<reco::CandidatePtr> &selDilepton);
   int getLeptonId(reco::CandidatePtr &lepton);
   double getPtErrorFor(reco::CandidatePtr &lepton);
@@ -96,20 +108,24 @@ namespace dilepton
 
 namespace track
 {
-  reco::MuonCollection filter(edm::Handle<std::vector<reco::Track> > &hTrks, 
-			      std::vector<reco::CandidatePtr> &isoLepts, 
-			      std::vector<reco::VertexRef> &selVtx, 
-			      const edm::ParameterSet &iConfig, 
-			      const edm::EventSetup &iSetup);
+  TrackWithVertexCollection filter(edm::Handle<std::vector<reco::Track> > &hTrks, 
+				   CandidateWithVertexCollection &isoLepts, 
+				   std::vector<reco::VertexRef> &selVtx, 
+				   const edm::ParameterSet &iConfig, 
+				   const edm::EventSetup &iSetup);
   std::pair<int, double> computeTrackIsolation(const reco::Track *trk, 
 					       edm::Handle<std::vector<reco::Track> > &hTracks,
 					       reco::VertexRef &vx, bool vxConstr=true, 
-					       double minPtForIso=0.5);
+					       double minPtForIso=0.5,
+					       double maxDzCut=0.1);
 }
 
 namespace jet
 {
-  std::vector<reco::CandidatePtr> filter(edm::Handle<edm::View<reco::Candidate> > &hJet, std::vector<reco::CandidatePtr> &selLeptons, const edm::ParameterSet &iConfig);
+  CandidateWithVertexCollection filter(edm::Handle<edm::View<reco::Candidate> > &hJet, 
+				       CandidateWithVertexCollection &selLeptons, 
+				       std::vector<reco::VertexRef> &selVtx, 
+				       const edm::ParameterSet &iConfig);
   double fAssoc(const pat::Jet *jet, const reco::Vertex *vtx);
 }
 

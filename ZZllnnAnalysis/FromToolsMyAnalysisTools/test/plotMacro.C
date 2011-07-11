@@ -1,5 +1,5 @@
 /*
- *  $Date: 2011/06/10 11:26:09 $
+ *  $Date: 2011/06/22 14:06:26 $
  *  \author D. Trocino   - Northeastern University
  */
 
@@ -18,15 +18,16 @@
 using namespace std;
 
 
-TString inputdir("/tmp/trocino/AllData");
-TString namefile("ZZllvvAnalyzer_whatsample.root");
+TString inputdir("/tmp/trocino");
+//TString namefile("ZZllvvAnalyzer_whatsample.root");
+TString namefile("ZZllvvAnalyzer_ee_whatsample.root");
 
-TString outname("ZZllvvPlots.root");
-TString outdirname("ZZllvvPlots");
+TString outname("ZZllvvPlots_ee.root");
+TString outdirname("ZZllvvPlots_20110624");
 
 // -- For plotMacro -- //
-TString plotnametempl("DileptKin_whatcut_hMass");
-TString xlab("Dilepton inv. mass [GeV/c^{2}]");
+//TString plotnametempl("DileptKin_whatcut_hMass");
+//TString xlab("Dilepton inv. mass [GeV/c^{2}]");
 //TString plotnametempl("RedMetStd_whatcut_hRedMET");
 //TString xlab("Reduced MET [GeV]");
 //TString plotnametempl("SelJetKin_whatcut_hNObj");
@@ -34,8 +35,8 @@ TString xlab("Dilepton inv. mass [GeV/c^{2}]");
 //TString plotnametempl("JetKin_whatcut_hNObj");  // ALL jets
 //TString xlab("# jets");                          // ALL jets
 //TString plotnametempl("LeptonLead_whatcut_hNLept");
-//TString xlab("# extra leptons");
-//TString plotnametempl("SelectedTracks_whatcut_hNTrack");
+TString xlab("# extra leptons");
+TString plotnametempl("SelectedTracks_whatcut_hNTrack");
 //TString xlab("# extra isolated tracks");
 //TString plotnametempl("LeptonLead_whatcut_hPt");
 //TString xlab("Leading lepton p_{T} [GeV/c]");
@@ -74,8 +75,8 @@ bool plotData(false);
 bool drawAsHist(false);
 
 // -- Only for 2mu channel -- // 
-//TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11"};
-TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","TTJets_madgraph_Spring11","TToBLNu_Spring11","ZZtoAnything_allBut2l2n_Spring11","DYToTauTau_M-20_Spring11","DYToMuMu_M-20_Spring11"};
+TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11"};
+//TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","TTJets_madgraph_Spring11","TToBLNu_Spring11","ZZtoAnything_allBut2l2n_Spring11","DYToTauTau_M-20_Spring11","DYToMuMu_M-20_Spring11"};
 //TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","ZZtoAnything_allBut2l2n_Spring11","TTJets_madgraph_Spring11","TToBLNu_Spring11","WJetsToLNu_Spring11","DYToTauTau_M-20_Spring11","DYToMuMu_M-20_Spring11"};
 
 int sizeMc=sizeof(samplesMC)/sizeof(TString);
@@ -86,17 +87,29 @@ Color_t cols[]={kRed, /*kPink,*/ kMagenta, kViolet-1, kBlue, kAzure+1, kCyan, kT
 // ---- Initialize sample-axis title map ---- // 
 void initiateMap(map<TString, TString> &process) {
 
-  process["ZZtoAnything_only2l2n_Spring11"]="ZZ#rightarrow2l2#nu";
-  process["ZZtoAnything_allBut2l2n_Spring11"]="ZZ incl.";
-  process["WZtoAnything_Spring11"]="WZ";
-  process["WWtoAnything_Spring11"]="WW";
-  process["TTJets_madgraph_Spring11"]="t#bar{t}+jets";
-  process["TToBLNu_Spring11"]="single t";
-  process["WJetsToLNu_Spring11"]="W+jets";
-  process["DYToTauTau_M-20_Spring11"]="DY#rightarrow2#tau";
-  process["DYToMuMu_M-20_Spring11"]="DY#rightarrow2#mu";
-  process["DYToEE_M-20_Spring11"]="DY#rightarrow2e";
-  process["QCD_Pt-30to1000_Spring11"]="QCD";
+  process.insert(pair<TString, TString>("ZZtoAnything_only2l2n_Spring11", "ZZ#rightarrow2l2#nu"));
+  process.insert(pair<TString, TString>("ZZtoAnything_allBut2l2n_Spring11", "ZZ incl."));
+  process.insert(pair<TString, TString>("WZtoAnything_Spring11", "WZ"));
+  process.insert(pair<TString, TString>("WWtoAnything_Spring11", "WW"));
+  process.insert(pair<TString, TString>("TTJets_madgraph_Spring11", "t#bar{t}+jets"));
+  process.insert(pair<TString, TString>("TToBLNu_Spring11", "single t"));
+  process.insert(pair<TString, TString>("WJetsToLNu_Spring11", "W+jets"));
+  process.insert(pair<TString, TString>("DYToTauTau_M-20_Spring11", "DY#rightarrow2#tau"));
+  process.insert(pair<TString, TString>("DYToMuMu_M-20_Spring11", "DY#rightarrow2#mu"));
+  process.insert(pair<TString, TString>("DYToEE_M-20_Spring11", "DY#rightarrow2e"));
+  process.insert(pair<TString, TString>("QCD_Pt-30to1000_Spring11", "QCD"));
+
+//   process["ZZtoAnything_only2l2n_Spring11"]="ZZ#rightarrow2l2#nu";
+//   process["ZZtoAnything_allBut2l2n_Spring11"]="ZZ incl.";
+//   process["WZtoAnything_Spring11"]="WZ";
+//   process["WWtoAnything_Spring11"]="WW";
+//   process["TTJets_madgraph_Spring11"]="t#bar{t}+jets";
+//   process["TToBLNu_Spring11"]="single t";
+//   process["WJetsToLNu_Spring11"]="W+jets";
+//   process["DYToTauTau_M-20_Spring11"]="DY#rightarrow2#tau";
+//   process["DYToMuMu_M-20_Spring11"]="DY#rightarrow2#mu";
+//   process["DYToEE_M-20_Spring11"]="DY#rightarrow2e";
+//   process["QCD_Pt-30to1000_Spring11"]="QCD";
 
   return;
 }
@@ -139,8 +152,8 @@ void plotMacro() {
   TString samplesMC[]={"ZZtoAnything_only2l2n_Spring11","WZtoAnything_Spring11","WWtoAnything_Spring11","ZZtoAnything_allBut2l2n_Spring11","TTJets_madgraph_Spring11","TToBLNu_Spring11","WJetsToLNu_Spring11","QCD_Pt-30to1000_Spring11","DYToEE_M-20_Spring11","DYToTauTau_M-20_Spring11","DYToMuMu_M-20_Spring11"};
   */
 
-  map<TString, TString> proc;
-  initiateMap(proc);
+//   map<TString, TString> proc;
+//   initiateMap(proc);
 
   TString sampleData="AllData";
 
@@ -225,7 +238,8 @@ void plotMacro() {
 	h->Scale(1./h->Integral());
       }
       stacks[idx2]->Add(h);
-      lleg[idx2]->AddEntry(h, proc[samplesMC[idx1]].Data(), "f");
+      //      lleg[idx2]->AddEntry(h, proc[samplesMC[idx1]].Data(), "f");
+      lleg[idx2]->AddEntry(h, samplesMC[idx1].Data(), "f");
       maxV[idx2]=(h->GetBinContent(h->GetMaximumBin())>maxV[idx2] ? h->GetBinContent(h->GetMaximumBin()) : maxV[idx2]);
       minV[idx2]=(h->GetBinContent(h->GetMaximumBin())<minV[idx2] && h->GetBinContent(h->GetMaximumBin())>1.e-7 ? h->GetBinContent(h->GetMaximumBin()) : minV[idx2]);
     } // end for( ... subdir ...)
@@ -325,8 +339,8 @@ void plotNumbers() {
   Color_t cols[]={kRed, kPink, kMagenta, kViolet, kBlue, kAzure, kCyan, kTeal, kGreen, kSpring, kYellow, kOrange};
   */
 
-  map<TString, TString> proc;
-  initiateMap(proc);
+//   map<TString, TString> proc;
+//   initiateMap(proc);
 
   Style_t mrks[]={21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
@@ -397,7 +411,8 @@ void plotNumbers() {
     //ccc->cd();
     //if(idx1==0) h->Draw();
     //else h->Draw("same");
-    leg->AddEntry(h, proc[samplesMC[idx1]].Data(), "pe");
+    //    leg->AddEntry(h, proc[samplesMC[idx1]].Data(), "pe");
+    leg->AddEntry(h, samplesMC[idx1].Data(), "pe");
 
     if(samplesMC[idx1].Contains("DYToMuMu")) {
       h->SetMarkerColor(kOrange+1);

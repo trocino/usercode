@@ -25,7 +25,6 @@ process.zzllvvAnalyzer = cms.EDAnalyzer("ZZllvvAnalyzer",
                                         PuDistrFile = cms.untracked.string('root://castorcms//castor/cern.ch/user/t/trocino/ZZllnn/PU-file/pudist_160404-163869.root'),
                                         fileName = cms.untracked.string('ZZllvvAnalyzer.root'),
                                         source = cms.untracked.InputTag("cleanEvent"),
-                                        zmmInput = cms.untracked.InputTag("zMMCand"),
                                         isMC = cms.untracked.bool(False),
                                         xSection = cms.untracked.double(1.0),
                                         branchingRatio = cms.untracked.double(1.0),
@@ -38,14 +37,39 @@ process.zzllvvAnalyzer = cms.EDAnalyzer("ZZllvvAnalyzer",
                                         #Dileptons = BaseDileptonSelection.clone(),
                                         #Jets = BaseJetSelection.clone(),
                                         #MET = BaseMetSelection.clone(),
+                                        FlavorCombination = cms.untracked.int32(0),    ## 0=ee/mm (default), 1=mm, 2=ee, 3=em; 4=any combination
+                                        ChargeCombination = cms.untracked.int32(-1),   ## 0=any, -1=opposite (default), 1=same
                                         RecoilLongWeight = cms.untracked.double(2.0),
                                         RecoilPerpWeight = cms.untracked.double(2.0),
                                         SigmaPtLongWeight = cms.untracked.double(2.8),
                                         SigmaPtPerpWeight = cms.untracked.double(2.8),
                                         PerpComponentWeight = cms.untracked.double(1.0),
-                                        RedMETMinCut = cms.untracked.double(50.0),
+                                        RedMETMinCut = cms.untracked.double(35.0),
                                         )
 
+# flavorLabel=""
+# if process.zzllvvAnalyzer.FlavorCombination == 0:
+#     flavorLabel="eemm"
+# elif process.zzllvvAnalyzer.FlavorCombination == 1:
+#     flavorLabel="mm"
+# elif process.zzllvvAnalyzer.FlavorCombination == 2:
+#     flavorLabel="ee"
+# elif process.zzllvvAnalyzer.FlavorCombination == 3:
+#     flavorLabel="em"
+# else:
+#     flavorLabel="anyFlav"
+
+# chargeLabel=""
+# if process.zzllvvAnalyzer.ChargeCombination == -1:
+#     chargeLabel="opp"
+# elif process.zzllvvAnalyzer.ChargeCombination == 0:
+#     chargeLabel="any"
+# elif process.zzllvvAnalyzer.ChargeCombination == 1:
+#     chargeLabel="same"
+# else:
+#     chargeLabel="wrong"
+
+# process.zzllvvAnalyzer.fileName = cms.untracked.string('ZZllvvAnalyzer_'+flavorLabel+'_'+chargeLabel+'Charge.root')
 
 process.llnnFilter = cms.EDFilter("ZZllnnFilter")
 

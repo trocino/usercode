@@ -5,11 +5,15 @@ using namespace std;
 namespace electron{
   
   //
-  std::vector<reco::CandidatePtr> filter(edm::Handle<edm::View<reco::Candidate> > &hEle, edm::Handle<edm::View<reco::Candidate> > &hMu, const edm::ParameterSet &iConfig)
+  CandidateWithVertexCollection filter(edm::Handle<edm::View<reco::Candidate> > &hEle, 
+				       edm::Handle<edm::View<reco::Candidate> > &hMu, 
+				       std::vector<reco::VertexRef> &selVtx, 
+				       const edm::ParameterSet &iConfig,
+				       const edm::EventSetup &iSetup)
   {
-    std::vector<reco::CandidatePtr> selElectrons;
+    CandidateWithVertexCollection selElectrons;
 
-    try{
+    try {
       //config parameters                                                                                                                                                 
       double minPt = iConfig.getParameter<double>("minPt");
       double minSuperClusterEt = iConfig.getParameter<double>("minSuperClusterEt");
@@ -20,6 +24,8 @@ namespace electron{
       string id = iConfig.getParameter<string>("id");
       double maxRelIso = iConfig.getParameter<double>("maxRelIso");
       double minDeltaRtoMuons = iConfig.getParameter<double>("minDeltaRtoMuons");
+      double maxDxy = iConfig.getParameter<double>("maxDxy");
+      double maxDz  = iConfig.getParameter<double>("maxDz");
 
       //iterate over the electrons
       for(size_t iElec=0; iElec< hEle.product()->size(); ++iElec)
@@ -29,7 +35,7 @@ namespace electron{
 	  bool isEcalDriven(true);
 	  try{
 	    isEcalDriven = ele->ecalDrivenSeed();
-	  }catch(std::exception &e){
+	  } catch(std::exception &e) {
 	    //it may happen that GsfElectronCore is not stored (rely on the skim)
 	  }
 	  if(!isEcalDriven) continue;
@@ -57,43 +63,48 @@ namespace electron{
 	  if( !(eid & 0x1) ) continue;
 	  
 	  //isolation
-	  double norm = std::max(ePt,(double)20.);
+	  double norm = std::max(ePt, (double)20.);
 	  double trackIso = ele->trackIso();
 	  double ecalIso = ele->ecalIso();
 	  double hcalIso = ele->hcalIso();
 	  double totalIso = trackIso+hcalIso;
-	  if (ele->isEB()) {
-	    if( ecalIso > 1.0 ) totalIso += ecalIso - 1;
-	    else totalIso += ecalIso;
-	  } else {
-	    totalIso += ecalIso;
+	  if(ele->isEB()) {
+	    if( ecalIso>1.0 ) totalIso+=ecalIso-1;
+	    else totalIso+=ecalIso;
+	  } 
+	  else {
+	    totalIso+=ecalIso;
 	  }
 
-	  double relIso = totalIso / norm;
+	  double relIso = totalIso/norm;
 	  if(relIso>maxRelIso) continue;
 
 	  //cross clean with overlapping muons
 	  bool isOverLappingWithMuon(false);
-	  for(size_t iMuon=0; iMuon<hMu.product()->size(); ++iMuon)
-	    {
-	      reco::CandidatePtr muPtr = hMu->ptrAt(iMuon);
-	      const pat::Muon *muon = dynamic_cast<const pat::Muon *>( muPtr.get() );
+	  for(size_t iMuon=0; iMuon<hMu.product()->size(); ++iMuon) {
+	    reco::CandidatePtr muPtr = hMu->ptrAt(iMuon);
+	    const pat::Muon *muon = dynamic_cast<const pat::Muon *>( muPtr.get() );
 
-	      if( !muon->isGlobalMuon() && !muon->isTrackerMuon() ) continue;
-	      if( muon->innerTrack().isNull() ) continue;
-	      if( muon->innerTrack()->numberOfValidHits() <=10 ) continue;
+	    if( !muon->isGlobalMuon() && !muon->isTrackerMuon() ) continue;
+	    if( muon->innerTrack().isNull() ) continue;
+	    if( muon->innerTrack()->numberOfValidHits()<=10 ) continue;
 	      
-	      double dR = deltaR(*muon->innerTrack(),*eTrack);
-	      if(dR>minDeltaRtoMuons) continue;
-	      isOverLappingWithMuon=true;
-	      break;
-	    }
+	    double dR = deltaR(*muon->innerTrack(), *eTrack);
+	    if(dR>minDeltaRtoMuons) continue;
+	    isOverLappingWithMuon=true;
+	    break;
+	  }
 	  if(isOverLappingWithMuon) continue;
 
+	  //vertex selection and IP cuts
+	  reco::VertexRef vtx=vertex::getClosestVertexTo<reco::GsfTrack>( eTrack.get(), selVtx, iSetup, true);
+	  if( fabs(eTrack->dxy(vtx->position()))>maxDxy ||
+	      fabs(eTrack->dz(vtx->position()))>maxDz    ) continue;
+
 	  //the electron is selected
-	  selElectrons.push_back(elePtr);
+	  selElectrons.push_back( CandidateWithVertex(vtx, elePtr) );
 	}
-    }catch(std::exception &e){
+    } catch(std::exception &e) {
       cout << "[electron::filter] failed with " << e.what() << endl;
     }
 

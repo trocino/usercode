@@ -4,8 +4,8 @@
 /** \class ZZllvvAnalyzer
  *  No description available.
  *
- *  $Date: 2011/04/07 15:21:48 $
- *  $Revision: 1.4 $
+ *  $Date: 2011/06/22 14:04:17 $
+ *  $Revision: 1.3 $
  *  \author G. Cerminara - CERN
  *          D. Trocino   - Northeastern University
  */
@@ -68,7 +68,6 @@ private:
   TNtuple *finalNtpl;
   std::string theOutFileName;
   edm::InputTag source;
-  edm::InputTag zmmInput;
   bool debug;
   edm::ParameterSet vertexSelection;
 
@@ -89,27 +88,16 @@ private:
 		 unsigned int, 
 		 unsigned int, 
 		 int, 
+		 int, 
 		 const reco::CandidatePtr, 
 		 const reco::CandidatePtr, 
+		 reco::CandidatePtr, 
 		 edm::RefVector<std::vector<reco::Muon> > &, 
 		 edm::RefVector<std::vector<reco::Muon> > &, 
 		 const pat::MET *, 
 		 ReducedMETComputer *, 
 		 std::vector<LorentzVector> &,
-		 std::vector<LorentzVector> &);
-  //   void fillPlots(std::string, 
-  // 		 const reco::Vertex *, 
-  // 		 unsigned int, 
-  // 		 unsigned int, 
-  // 		 int, 
-  // 		 const pat::Muon *, 
-  // 		 const pat::Muon *, 
-  // 		 edm::RefVector<std::vector<reco::Muon> > &, 
-  // 		 edm::RefVector<std::vector<reco::Muon> > &, 
-  // 		 const pat::MET *, 
-  // 		 ReducedMETComputer *, 
-  // 		 std::vector<LorentzVector> &,
-  // 		 std::vector<LorentzVector> &);
+		 int);
   void scalePlots(double);
   void writePlots();
   std::vector<double> makePuDistr(const edm::ParameterSet&);

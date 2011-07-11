@@ -4,8 +4,8 @@
 /** \class Histograms
  *  No description available.
  *
- *  $Date: 2011/04/18 17:27:48 $
- *  $Revision: 1.4 $
+ *  $Date: 2011/06/22 13:55:11 $
+ *  $Revision: 1.2 $
  *  \author G. Cerminara - CERN
  */
 
@@ -390,8 +390,8 @@ public:
   HistoTrack(std::string name) : theName(name) {
     hKin         = new HistoKin(name);
     hIsoNTracks  = new TH1F(theName+"_hIsoNTracks","# tracks in iso cone", 50, -0.5, 49.5);
-    hTrackIso    = new TH1F(theName+"_hTrackIso","Relative isolation", 100, 0., 20.);
-    hTrackRelIso = new TH1F(theName+"_hTrackRelIso","Relative isolation", 100, 0., 1.);
+    hTrackIso    = new TH1F(theName+"_hTrackIso","Isolation", 100, 0., 20.);
+    hTrackRelIso = new TH1F(theName+"_hTrackRelIso","Relative isolation", 100, 0., 0.1);
     hDxy         = new TH1F(theName+"_hDxy","#Delta_{xy}", 100, 0., 0.1);
     hDz          = new TH1F(theName+"_hDz","#Delta_{z}", 100, 0., 0.5);
     hNTrack      = new TH1F(theName+"_hNTrack","# tracks", 12, -0.5, 11.5);
@@ -539,14 +539,14 @@ public:
 class HistoObjectPair {
 public:
   HistoObjectPair(std::string name) : theName(name) {
-    hDeltaPhi   = new TH1F(theName+"_hDeltaPhi","#Delta#phi(1, 2)", 100, -3.15, 3.15);
-    hDeltaEta   = new TH1F(theName+"_hDeltaEta","#Delta#eta(1, 2)", 100, -5., 5.);
-    hDeltaTheta = new TH1F(theName+"_hDeltaTheta","#Delta#theta(1, 2)", 100, -3.15, 3.15);
-    hDeltaR     = new TH1F(theName+"_hDeltaR","#DeltaR(1, 1)", 100, 0., 6.);
-    hAngle      = new TH1F(theName+"_hAngle","angle(1, 2)", 100, 0., 3.15);
-    hCosAngle   = new TH1F(theName+"_hCosAngle","cosine of angle(1, 2)", 100, -1., 1.);
-    //hInvMass    = new TH1F(theName+"_hInvMass", 100, 0., 150.);
-    hTransMass  = new TH1F(theName+"_hTransMass", "Transverse mass", 100, 0., 500.);
+    hDeltaPhi    = new TH1F(theName+"_hDeltaPhi","#Delta#phi(1, 2)", 100, -3.15, 3.15);
+    hDeltaEta    = new TH1F(theName+"_hDeltaEta","#Delta#eta(1, 2)", 100, -5., 5.);
+    hDeltaTheta  = new TH1F(theName+"_hDeltaTheta","#Delta#theta(1, 2)", 100, -3.15, 3.15);
+    hDeltaR      = new TH1F(theName+"_hDeltaR","#DeltaR(1, 1)", 100, 0., 6.);
+    hAngle       = new TH1F(theName+"_hAngle","angle(1, 2)", 100, 0., 3.15);
+    hCosAngle    = new TH1F(theName+"_hCosAngle","cosine of angle(1, 2)", 100, -1., 1.);
+    hTransMass   = new TH1F(theName+"_hTransMass", "Transverse mass", 100, 0., 500.);
+    hTransMassZZ = new TH1F(theName+"_hTransMassZZ", "ZZ transverse mass", 100, 0., 500.);
 
     hDeltaPhi->Sumw2();
     hDeltaEta->Sumw2();
@@ -554,67 +554,67 @@ public:
     hDeltaR->Sumw2();
     hAngle->Sumw2();
     hCosAngle->Sumw2();
-    //hInvMass->Sumw2();
     hTransMass->Sumw2();
+    hTransMassZZ->Sumw2();
   }
 
 
   HistoObjectPair() : theName("") {
-    hDeltaPhi   = 0;
-    hDeltaEta   = 0;
-    hDeltaTheta = 0;
-    hDeltaR     = 0;
-    hAngle      = 0;
-    hCosAngle   = 0;
-    //hInvMass    = 0;
-    hTransMass  = 0;
+    hDeltaPhi    = 0;
+    hDeltaEta    = 0;
+    hDeltaTheta  = 0;
+    hDeltaR      = 0;
+    hAngle       = 0;
+    hCosAngle    = 0;
+    hTransMass   = 0;
+    hTransMassZZ = 0;
   }
 
 
   HistoObjectPair(std::string name, TFile *file) : theName(name) {
-    hDeltaPhi   = (TH1F *)file->Get(theName+"_hDeltaPhi");
-    hDeltaEta   = (TH1F *)file->Get(theName+"_hDeltaEta");
-    hDeltaTheta = (TH1F *)file->Get(theName+"_hDeltaTheta");
-    hDeltaR     = (TH1F *)file->Get(theName+"_hDeltaR");
-    hAngle      = (TH1F *)file->Get(theName+"_hAngle");
-    hCosAngle   = (TH1F *)file->Get(theName+"_hCosAngle");
-    //hInvMass    = (TH1F *)file->Get(theName+"_hInvMass");
-    hTransMass  = (TH1F *)file->Get(theName+"_hTransMass");
+    hDeltaPhi    = (TH1F *)file->Get(theName+"_hDeltaPhi");
+    hDeltaEta    = (TH1F *)file->Get(theName+"_hDeltaEta");
+    hDeltaTheta  = (TH1F *)file->Get(theName+"_hDeltaTheta");
+    hDeltaR      = (TH1F *)file->Get(theName+"_hDeltaR");
+    hAngle       = (TH1F *)file->Get(theName+"_hAngle");
+    hCosAngle    = (TH1F *)file->Get(theName+"_hCosAngle");
+    hTransMass   = (TH1F *)file->Get(theName+"_hTransMass");
+    hTransMassZZ = (TH1F *)file->Get(theName+"_hTransMassZZ");
  }
 
 
   void Add(const HistoObjectPair* histSet) {
-    if(hDeltaPhi   != 0) hDeltaPhi->Add(histSet->hDeltaPhi);
-    if(hDeltaEta   != 0) hDeltaEta->Add(histSet->hDeltaEta);
-    if(hDeltaTheta != 0) hDeltaTheta->Add(histSet->hDeltaTheta);
-    if(hDeltaR     != 0) hDeltaR->Add(histSet->hDeltaR);
-    if(hAngle      != 0) hAngle->Add(histSet->hAngle);
-    if(hCosAngle   != 0) hCosAngle->Add(histSet->hCosAngle);
-    //if(hInvMass    != 0) hInvMass->Add(histSet->hInvMass);
-    if(hTransMass  != 0) hTransMass->Add(histSet->hTransMass);
+    if(hDeltaPhi    != 0) hDeltaPhi->Add(histSet->hDeltaPhi);
+    if(hDeltaEta    != 0) hDeltaEta->Add(histSet->hDeltaEta);
+    if(hDeltaTheta  != 0) hDeltaTheta->Add(histSet->hDeltaTheta);
+    if(hDeltaR      != 0) hDeltaR->Add(histSet->hDeltaR);
+    if(hAngle       != 0) hAngle->Add(histSet->hAngle);
+    if(hCosAngle    != 0) hCosAngle->Add(histSet->hCosAngle);
+    if(hTransMass   != 0) hTransMass->Add(histSet->hTransMass);
+    if(hTransMassZZ != 0) hTransMassZZ->Add(histSet->hTransMassZZ);
   }
 
   void Scale(double scaleFact) {
-    if(hDeltaPhi   != 0) hDeltaPhi->Scale(scaleFact);
-    if(hDeltaEta   != 0) hDeltaEta->Scale(scaleFact);
-    if(hDeltaTheta != 0) hDeltaTheta->Scale(scaleFact);
-    if(hDeltaR     != 0) hDeltaR->Scale(scaleFact);
-    if(hAngle      != 0) hAngle->Scale(scaleFact);
-    if(hCosAngle   != 0) hCosAngle->Scale(scaleFact);
-    //if(hInvMass    != 0) hInvMass->Scale(scaleFact);
-    if(hTransMass  != 0) hTransMass->Scale(scaleFact);
+    if(hDeltaPhi    != 0) hDeltaPhi->Scale(scaleFact);
+    if(hDeltaEta    != 0) hDeltaEta->Scale(scaleFact);
+    if(hDeltaTheta  != 0) hDeltaTheta->Scale(scaleFact);
+    if(hDeltaR      != 0) hDeltaR->Scale(scaleFact);
+    if(hAngle       != 0) hAngle->Scale(scaleFact);
+    if(hCosAngle    != 0) hCosAngle->Scale(scaleFact);
+    if(hTransMass   != 0) hTransMass->Scale(scaleFact);
+    if(hTransMassZZ != 0) hTransMassZZ->Scale(scaleFact);
   }
 
 
   void Write() {
-    if(hDeltaPhi   != 0) hDeltaPhi->Write();
-    if(hDeltaEta   != 0) hDeltaEta->Write();
-    if(hDeltaTheta != 0) hDeltaTheta->Write();
-    if(hDeltaR     != 0) hDeltaR->Write();
-    if(hAngle      != 0) hAngle->Write();
-    if(hCosAngle   != 0) hCosAngle->Write();
-    //if(hInvMass    != 0) hInvMass->Write();
-    if(hTransMass  != 0) hTransMass->Write();
+    if(hDeltaPhi    != 0) hDeltaPhi->Write();
+    if(hDeltaEta    != 0) hDeltaEta->Write();
+    if(hDeltaTheta  != 0) hDeltaTheta->Write();
+    if(hDeltaR      != 0) hDeltaR->Write();
+    if(hAngle       != 0) hAngle->Write();
+    if(hCosAngle    != 0) hCosAngle->Write();
+    if(hTransMass   != 0) hTransMass->Write();
+    if(hTransMassZZ != 0) hTransMassZZ->Write();
   }
   
   
@@ -629,12 +629,15 @@ public:
     hDeltaR->Fill( deltaR( tm1.eta(), tm1.phi(), tm2.eta(), tm2.phi() ), weight );
     hAngle->Fill( TMath::ACos( tm1.Unit().Dot(tm2.Unit()) ), weight );
     hCosAngle->Fill( tm1.Unit().Dot(tm2.Unit()), weight );
-    //hInvMass->Fill(, weight );
-    double e1=sqrt( tm1.perp2() + 91.1876*91.1876 );
-    double e2=sqrt( tm2.perp2() + 91.1876*91.1876 );
-    double etot=e1+e2;
-    double pt2tot=(tm1+tm2).perp2();
-    hTransMass->Fill( sqrt(etot*etot - pt2tot), weight );
+    double pt1=sqrt(tm1.perp2());
+    double pt2=sqrt(tm2.perp2());
+    double etTot=pt1+pt2;
+    double ptTot=sqrt((tm1+tm2).perp2());
+    double etZ1=sqrt( pt1*pt1 + 91.1876*91.1876 );
+    double etZ2=sqrt( pt2*pt2 + 91.1876*91.1876 );
+    double etZtot=etZ1+etZ2;
+    hTransMass->Fill( sqrt(etTot*etTot - ptTot*ptTot), weight );
+    hTransMassZZ->Fill( sqrt(etZtot*etZtot - ptTot*ptTot), weight );
   }
 #endif
 
@@ -650,8 +653,8 @@ public:
   TH1F *hDeltaR;
   TH1F *hAngle;
   TH1F *hCosAngle;
-  //TH1F *hInvMass;   // Hypothesis: ZZ
-  TH1F *hTransMass; // Hypothesis: ZZ
+  TH1F *hTransMass;
+  TH1F *hTransMassZZ; // Hypothesis: ZZ
 };
 
 

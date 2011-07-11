@@ -19,7 +19,7 @@
 
 
 //    }
-  gSystem->Load("root_lib/libEvent.so");
-  gSystem->AddLinkedLibs("root_lib/libEvent.so");
+  gSystem->Load("extra_root_lib/libEvent.so");
+  gSystem->AddLinkedLibs("extra_root_lib/libEvent.so");
 
 }

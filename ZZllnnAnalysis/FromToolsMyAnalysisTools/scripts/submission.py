@@ -11,7 +11,7 @@ from Tools.MyAnalysisTools.color_tools import *
 import FWCore.ParameterSet.Config as cms
 
 
-def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, bRatio, luminosity, JobName, nFilesPerJob, queue):
+def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, flavorLab, chargeLab, isMC, xSect, bRatio, luminosity, JobName, nFilesPerJob, queue):
 
     JobName += "/"
 
@@ -20,7 +20,27 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, 
     submissionArea = pwd + "/" + JobName
 
 
-    outputBaseName = outputBaseName
+    ## Flavor combinations
+    flavorLabs = ['eemm', 'mm', 'ee', 'em', 'any']
+    try:
+        flavorIdx=flavorLabs.index(flavorLab)
+    except:
+        print "Wrong flavor combination!"
+        print "Acceptable combinations are:"
+        print "\'eemm\', \'mm\', \'ee\', \'em\', \'any\'"
+        sys.exit()
+     
+    ## Charge combinations
+    chargeLabs = ['opp', 'any', 'same']
+    try:
+        chargeIdx=chargeLabs.index(chargeLab)-1
+    except:
+        print "Wrong charge combination!"
+        print "Acceptable combinations are:"
+        print "\'opp\', \'any\', \'same\'"
+        sys.exit()
+
+    outputBaseName = outputBaseName+"_"+flavorLab+"_"+chargeLab+"Charge"
 
     if not os.path.exists(JobName):
         print " directory " + JobName + " doesn't exist: creating it"
@@ -52,14 +72,16 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, 
 
     castorFileList = []
     #storeDir = inputDir.split("cern.ch/cms")[1]
-    storeDir = "rfio:" + inputDir
+    #storeDir = "rfio:" + inputDir
+    storeDir = "root://castorcms/" + inputDir
     storeDir = storeDir.rstrip('/')+'/'
     for castorFileLine in castorDir_out[1].split("\n"):
         castorFile = castorFileLine.split()[8]
         if "root" in castorFile and not "histo" in castorFile:
-
             #print castorFile
             castorFileList.append(storeDir + castorFile)
+            # stage file
+            commands.getstatusoutput("stager_get -M "+inputDir+"/"+castorFile)
 
     print "Input dir: " + inputDir
     print "# fo files: " + str(len(castorFileList))
@@ -67,8 +89,6 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, 
     toNFiles = len(castorFileList)
     if len(castorFileList) < nFilesPerJob:
         nFilesPerJob = len(castorFileList)
-
-
 
 
     from input_cfg import process
@@ -81,14 +101,16 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, 
         process.zzllvvAnalyzer.xSection = xSect
         process.zzllvvAnalyzer.branchingRatio = bRatio
         process.zzllvvAnalyzer.luminosity = luminosity
+        process.zzllvvAnalyzer.FlavorCombination = flavorIdx
+        process.zzllvvAnalyzer.ChargeCombination = chargeIdx
     if JobName.find('only2l2n') != -1:
         process.p = cms.Path(process.llnnFilt * process.baseSeq)
     elif JobName.find('allBut2l2n') != -1:
         process.p = cms.Path(process.llnnAntifilt * process.baseSeq)
     else:
         process.p = cms.Path(process.baseSeq)
-    
-    # do the manipulatio on output and input files
+
+    # do the manipulation on output and input files
     indexPart = 0
     indexTot  = 0
     indexJob = 0
@@ -99,15 +121,14 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, 
         indexTot+=1
 
 
-        #print inputFile
+        # print inputFile
         if indexPart == nFilesPerJob or indexTot == toNFiles:
             print "Writing cfg file for job # " + str(indexJob) + "...."
-            outputFileName = outputBaseName + "_" + str(indexJob) + ".root"
-            outputFileNameTmp =  outputBaseName + ".root"
-            try:
-                process.out.fileName = outputFileNameTmp
-            except AttributeError:
-                print "no output module \"out\" was found..."
+            outputFileName       = outputBaseName + "_" + str(indexJob) + ".root"
+            outputEdmFileName    = "edm" + outputFileName
+            # Set names of output files in cfg
+            process.zzllvvAnalyzer.fileName = outputFileName
+            process.out.fileName = outputEdmFileName
             # write the previous cfg
             cfgfilename = "expanded_" + str(indexJob) + "_cfg.py"
             logfilename = "log_" + str(indexJob) + ".log"
@@ -129,8 +150,9 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, isMC, xSect, 
             scriptfile.write("cp " + cfgfilename + " $runningDir\n")
             scriptfile.write("cd $runningDir\n")
             scriptfile.write("cmsRun " + cfgfilename + " >& " + logfilename + "\n")
-            scriptfile.write("rfcp " + outputFileNameTmp + " " + outputDir + outputFileName + "\n")
+            scriptfile.write("rfcp " + outputFileName + " " + outputDir + "\n")
             scriptfile.write("rfcp " + logfilename + " " + outputDir + "\n")
+            scriptfile.write("rfcp " + outputEdmFileName + " " + outputDir + "\n")
             scriptfile.write("#rfcp histograms.root " + outputDir + "/histograms_" +  str(indexJob) + ".root\n")
             scriptfile.write("\n")
             scriptfile.close()
@@ -255,13 +277,18 @@ if __name__     ==  "__main__":
         cfgfile.read([options.file ])
 
         # get the releases currently managed
-        listOfJobs = cfgfile.get('General','jobsToSubmit').split(',')
-        flag = cfgfile.get('General','selFlag')
-        configFile = cfgfile.get('General','configFile')
-        filesPerJob = int(cfgfile.get('General','filesPerJob'))
-        outputDirBase = cfgfile.get('General','outputDirBase')
-        fileBaseName = cfgfile.get('General','fileBaseName')
-        queue = cfgfile.get('General','queue')
+        listOfJobs = cfgfile.get('General', 'jobsToSubmit').split(',')
+        flag = cfgfile.get('General', 'selFlag')
+        configFile = cfgfile.get('General', 'configFile')
+        filesPerJob = int(cfgfile.get('General', 'filesPerJob'))
+        outputDirBase = cfgfile.get('General', 'outputDirBase')
+        fileBaseName = cfgfile.get('General', 'fileBaseName')
+        queue = cfgfile.get('General', 'queue')
+        flavor = cfgfile.get('General', 'flavorCombo')
+        charge = cfgfile.get('General', 'chargeCombo')
+
+        # change fileBaseName
+        fileBaseName = fileBaseName+"_"+flavor+"_"+charge+"Charge"
 
         for job in listOfJobs:
             inputDir = cfgfile.get(job,'inputDir')
@@ -276,7 +303,7 @@ if __name__     ==  "__main__":
             castorLines = outCastorDir_out[1].split("\n")
             if len(castorLines) != 0:
                 for castorFileLine in castorLines:
-                    if 'root' in castorFileLine:
+                    if 'root' in castorFileLine and not 'edm' in castorFileLine:
                         castorFile = castorFileLine.split()[8]
                         if "root" in castorFile and fileBaseName in castorFile:
                             filesToCopy.append(outputDirBase + "/" + flag + "/" + job + "/" + castorFile)
@@ -370,13 +397,15 @@ if __name__     ==  "__main__":
         cfgfile.read([options.file ])
 
         # get the releases currently managed
-        listOfJobs = cfgfile.get('General','jobsToSubmit').split(',')
-        flag = cfgfile.get('General','selFlag')
-        configFile = cfgfile.get('General','configFile')
-        filesPerJob = int(cfgfile.get('General','filesPerJob'))
-        outputDirBase = cfgfile.get('General','outputDirBase')
-        fileBaseName = cfgfile.get('General','fileBaseName')
-        queue = cfgfile.get('General','queue')
+        listOfJobs = cfgfile.get('General', 'jobsToSubmit').split(',')
+        flag = cfgfile.get('General', 'selFlag')
+        configFile = cfgfile.get('General', 'configFile')
+        filesPerJob = int(cfgfile.get('General', 'filesPerJob'))
+        outputDirBase = cfgfile.get('General', 'outputDirBase')
+        fileBaseName = cfgfile.get('General', 'fileBaseName')
+        queue = cfgfile.get('General', 'queue')
+        flavor = cfgfile.get('General', 'flavorCombo')
+        charge = cfgfile.get('General', 'chargeCombo')
 
         for job in listOfJobs:
             inputDir   = cfgfile.get(job,'inputDir')
@@ -388,7 +417,7 @@ if __name__     ==  "__main__":
             mkdir_cmd  = "rfmkdir -p " + outputDir
             mkdir_out  =  commands.getstatusoutput(mkdir_cmd)
             print mkdir_out[1]
-            createJobSetups(configFile, inputDir, outputDir, fileBaseName, isMC, xSect, bRatio, luminosity, flag + "_" + job, filesPerJob , queue)
+            createJobSetups(configFile, inputDir, outputDir, fileBaseName, flavor, charge, isMC, xSect, bRatio, luminosity, flag + "_" + job, filesPerJob , queue)
     else:
 
         if options.queue == None:
@@ -420,7 +449,7 @@ if __name__     ==  "__main__":
         queue = options.queue
         # -----------------------------------------------------------------------
 
-        createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, 0, 1.0, 1.0, 1.0, JobName, nFilesPerJob, queue)
+        createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, 'eemm', 'opp', 0, 1.0, 1.0, 1.0, JobName, nFilesPerJob, queue)
 
 sys.exit(0)
     

@@ -5,21 +5,20 @@ using namespace std;
 namespace track{
   
   //
-  reco::MuonCollection filter(edm::Handle<std::vector<reco::Track> > &hTrks, 
-			      std::vector<reco::CandidatePtr> &isoLepts, 
-			      std::vector<reco::VertexRef> &selVtx, 
-			      const edm::ParameterSet &iConfig, 
-			      const edm::EventSetup &iSetup)
+  TrackWithVertexCollection filter(edm::Handle<std::vector<reco::Track> > &hTrks, 
+				   CandidateWithVertexCollection &isoLepts, 
+				   std::vector<reco::VertexRef> &selVtx, 
+				   const edm::ParameterSet &iConfig, 
+				   const edm::EventSetup &iSetup)
   {
-    reco::MuonCollection selTracks;
-    //    vector<reco::RecoChargedCandidate> selIsoTracks;
+    TrackWithVertexCollection selTracks;
 
-    try{
+    try {
     
       // Config parameters
       double minPt = iConfig.getParameter<double>("minPt");
       double maxEta = iConfig.getParameter<double>("maxEta");
-      double minDRFromLept = iConfig.getParameter<double>("minDeltaRFromLeptons");
+      double minDRFromLept = iConfig.getParameter<double>("minDeltaRtoLeptons");
       double maxRelIso = iConfig.getParameter<double>("maxRelIso");
       double maxTrackChi2 = iConfig.getParameter<double>("maxTrackChi2");
       int minValidPixelHits = iConfig.getParameter<int>("minValidPixelHits");
@@ -28,11 +27,8 @@ namespace track{
       double maxDz  = iConfig.getParameter<double>("maxDz");
 
       // Iterate over tracks
-      //for(reco::TrackCollection::const_iterator iTrk=hTrks->begin(); iTrk!=hTrks->end(); ++iTrk) {
       for(size_t iTrk=0; iTrk<hTrks->size(); ++iTrk) {
 	reco::TrackRef tRef(hTrks, iTrk);
-	//const reco::Track *tRef=&*iTrk;
-	//edm::RefToBase<reco::Track> tRef=hTrks->refAt(iTrk);
 
 	// Kinematics
 	double tPt = tRef->pt();
@@ -44,7 +40,9 @@ namespace track{
 	double chi2 = tRef->normalizedChi2();
 	int nValidPixelHits = tRef->hitPattern().numberOfValidPixelHits();
 	int nValidTrackerHits = tRef->hitPattern().numberOfValidTrackerHits();
-	if(chi2>maxTrackChi2 || nValidPixelHits<minValidPixelHits || nValidTrackerHits<minValidTrackerHits) 
+	if(chi2>maxTrackChi2                     || 
+	   nValidPixelHits<minValidPixelHits     || 
+	   nValidTrackerHits<minValidTrackerHits  ) 
 	  continue;
 
 	// Vertex
@@ -58,39 +56,36 @@ namespace track{
 	if(trkDxy>maxDxy || trkDz>maxDz) continue;
 
 	// Overlaps with selected leptons
-	double minDR(1000);
-	for(std::vector<reco::CandidatePtr>::iterator lIt=isoLepts.begin(); 
-	    lIt != isoLepts.end(); lIt++) {
-	  double dR=deltaR(*tRef, **lIt);
+	double minDR(1000.);
+	for(CandidateWithVertexCollection::iterator lIt=isoLepts.begin(); 
+	    lIt!=isoLepts.end(); ++lIt) {
+	  double dR=deltaR( *tRef, *(lIt->second.get()) );
 	  if(dR>minDR) continue; 
 	  minDR=dR;
 	}
 	if(minDR<minDRFromLept) continue;
 
 	// Create fake muon for track
-	double fakeEnergy = sqrt(tRef->p()*tRef->p() + 0.011163691);  // using mass of a muon...
+	double fakeEnergy=sqrt(tRef->p()*tRef->p() + 0.011163691);  // using mass of a muon...
 	math::XYZTLorentzVector fakeP4(tRef->px(), tRef->py(), tRef->pz(), fakeEnergy);
-	selTracks.push_back(reco::Muon(tRef->charge(), fakeP4, vtx->position()));
-	reco::Muon &trkCand=selTracks.back();
-	trkCand.setInnerTrack(tRef);
+	//reco::Muon fakeMu(tRef->charge(), fakeP4, vtx->position());
+	//fakeMu.setInnerTrack(tRef);
 
 	// Isolation
-	pair<int, double> trackIso=computeTrackIsolation(tRef.get(), hTrks, vtx, true, 0.5);
+	pair<int, double> trackIso=computeTrackIsolation(tRef.get(), hTrks, vtx, true, 0.5, maxDz);
+	double relIso=trackIso.second/tRef->pt();
+	if(relIso>maxRelIso) continue;
+
 	reco::MuonIsolation isoR03, isoR05;
 	isoR03.nTracks=trackIso.first;
 	isoR03.sumPt=trackIso.second;
-	trkCand.setIsolation(isoR03, isoR05);
+	//fakeMu.setIsolation(isoR03, isoR05);
 
-	//double relIso=trackIso.second/tRef->pt();
-	//if(relIso>maxRelIso) {
-	//  cnt++;
-	//  continue;
-	//}
-
-	//// Track is selected
-	//reco::MuonRef mRef(selTracks, cnt);
-	//selIsoTracks.push_back(mRef);
-	//cnt++;	
+	// Fill the collection
+	selTracks.push_back( TrackWithVertex( vtx, reco::Muon(tRef->charge(), fakeP4, vtx->position()) ) );
+	reco::Muon & refMu=selTracks.back().second; 
+	refMu.setInnerTrack(tRef);
+	refMu.setIsolation(isoR03, isoR05);
 
       } // end for(size_t iTrk=0; iTrk<hTrks->size(); ++iTrk) 
 
@@ -102,11 +97,11 @@ namespace track{
   }
 
 
-  //double computeTrackIsolation(reco::TrackRef &trk, reco::VertexRef &vx, double minPt=0.5) 
   pair<int, double> computeTrackIsolation(const reco::Track *trk, 
 					  edm::Handle<std::vector<reco::Track> > &hTracks,
 					  reco::VertexRef &vx, bool vxConstr, 
-					  double minPtForIso)
+					  double minPtForIso,
+					  double maxDzCut)
   {
     double iso(0.);
     int ntrks(0);
@@ -118,7 +113,7 @@ namespace track{
       if( deltaR( *trk, *aTrk )>0.3 ) continue;
       if(vx.get()!=0 && vxConstr) {
 	double aDz=fabs(aTrk->dz(vx->position()));
-	if(aDz>0.1) continue;
+	if(aDz>maxDzCut) continue;
       }
       iso+=aTrk->pt();
       ntrks++;
