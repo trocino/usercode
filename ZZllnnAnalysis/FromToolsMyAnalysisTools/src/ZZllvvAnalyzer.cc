@@ -1,8 +1,8 @@
 /*
  *  See header file for a description of this class.
  *
- *  $Date: 2011/06/22 14:04:23 $
- *  $Revision: 1.3 $
+ *  $Date: 2011/07/11 19:28:22 $
+ *  $Revision: 1.4 $
  *  \author G. Cerminara - CERN
  *          D. Trocino   - Northeastern University
  */
@@ -29,6 +29,7 @@
 #include "DataFormats/PatCandidates/interface/EventHypothesis.h"
 #include "DataFormats/PatCandidates/interface/EventHypothesisLooper.h"
 #include "DataFormats/Common/interface/MergeableCounter.h"
+#include "DataFormats/Math/interface/deltaPhi.h"
 #include <iostream>
 #include <algorithm>
 #include "TFile.h"
@@ -50,7 +51,7 @@ float theWeight=1.;
 
 // Analysis cuts
 TString allSteps[]={"Analyzed", "Dilepton", "MassWindow", 
-		    "JetVeto", "LeptonVeto", "TrackVeto", 
+		    "JetVeto", "LeptonVeto", /*"TrackVeto",*/ 
 		    "RedMETcut"};
 const unsigned int nSteps=sizeof(allSteps)/sizeof(TString);
 map<string, int> maps;
@@ -85,7 +86,8 @@ ReducedMETComputer *redMETComputer_std;
 TString varsForLL[]={"run", "lumi", "event", "weight", 
 		     "leadCharge", "subleadCharge", 
 		     "leadPt", "subleadPt", 
-		     "diLeptInvMass", 
+		     "dileptPt", 
+		     "dileptInvMass", 
 		     "dileptLeadDeltaPhi",
 		     "leptMinusCmCosTheta",
 		     "redMet",
@@ -101,15 +103,41 @@ TString varsForLL[]={"run", "lumi", "event", "weight",
 		     "redMet_met_perp",
 		     "redMet_recoil_long",
 		     "redMet_recoil_perp",
-		     "thirdLept_pt",
 		     "thirdLept_flavor",
+		     "thirdLept_isGlobalMuon",
+		     "thirdLept_isGlobalMuonPT",
+		     "thirdLept_isTrackerMuon",
+		     "thirdLept_isTrackerMuonLSL",
+		     "thirdLept_isTrackerMuonLST",
+		     "thirdLept_isTrackerMuonLSAL",
+		     "thirdLept_isTrackerMuonLSAT",
+		     "thirdLept_pt",
+		     "thirdLept_eta",
+		     "thirdLept_trkChi2",
+		     "thirdLept_glbChi2",
+		     "thirdLept_corrRelIso",
+		     "thirdLept_pixHits",
+		     "thirdLept_trkHits",
+		     "thirdLept_trkLostInnerHits",
+		     "thirdLept_trkLostOuterHits",
+		     "thirdLept_muHits",
+		     "thirdLept_muMatches",
+		     "thirdLept_dxy",
+		     "thirdLept_dz",
+		     "thirdLept_METleptTransvMass",
 		     "thirdTrack_pt",
+		     "thirdTrack_eta",
+		     "thirdTrack_chi2",
 		     "thirdTrack_nTracksIso",
 		     "thirdTrack_trkIso",
 		     "thirdTrack_relTrkIso",
-		     "thirdTrack_chi2",
 		     "thirdTrack_nPixHits",
-		     "thirdTrack_nTrkHits"};
+		     "thirdTrack_nTrkHits",
+		     "thirdTrack_nTrkLostInnHits",
+		     "thirdTrack_nTrkLostOutHits",
+		     "thirdTrack_dxy",
+		     "thirdTrack_dz",
+		     "thirdTrack_METtrackTransvMass"};
 const unsigned int nVarsOpt=sizeof(varsForLL)/sizeof(TString);
 
 ZZllvvAnalyzer::ZZllvvAnalyzer(const ParameterSet& pSet) : totNEvents(0) 
@@ -248,6 +276,10 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   unsigned int goodNvtx=selVertices.size();
   if(debug) cout << "# of good vertices: " << goodNvtx << endl;;
 
+  // Average energy density
+  edm::Handle< double > rhoH;
+  event.getByLabel(InputTag("kt6PFJets:rho"), rhoH);
+  double rho=(*rhoH);
 
   // Retrieve the Event Hypothesis
   Handle<vector<pat::EventHypothesis> > hyps;
@@ -313,13 +345,30 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   const pat::Electron *electronLead    = dynamic_cast<const pat::Electron *>(lep1.get());
   const pat::Electron *electronSubLead = dynamic_cast<const pat::Electron *>(lep2.get());
 
+  // TEMPORARY!!!!
+  double muonEffectiveArea=0.112;
+  double electronEffectiveArea=0.24;
+  double Aeff1=(muonLead ? muonEffectiveArea : electronEffectiveArea);
+  double Aeff2=(muonSubLead ? muonEffectiveArea : electronEffectiveArea);
+
+  vector<double> lepIso1=dilepton::getLeptonIso(lep1);
+  double relIso1=(lepIso1[dilepton::TRACKER_ISO]
+		  +max(lepIso1[dilepton::ECAL_ISO]
+		       +lepIso1[dilepton::HCAL_ISO]
+		       -Aeff1*rho, 0.0)) / lep1->pt();
+  vector<double> lepIso2=dilepton::getLeptonIso(lep2);
+  double relIso2=(lepIso2[dilepton::TRACKER_ISO]
+		  +max(lepIso2[dilepton::ECAL_ISO]
+		       +lepIso2[dilepton::HCAL_ISO]
+		       -Aeff2*rho, 0.0)) / lep2->pt();
+
   if(debug) {
     cout << "\t dilepton leg1: type=" << (muonLead ? "MUON" : (electronLead ? "ELECTRON" : "UNKNOWN")) 
 	 << "; charge=" << lep1->charge() << "; pt=" << lep1->pt() 
-	 << "; eta=" << lep1->eta() << "; phi=" << lep1->phi() << endl;
+	 << "; eta=" << lep1->eta() << "; phi=" << lep1->phi() << "; relIsoCorr=" << relIso1 << endl;
     cout << "\t          leg2: type=" << (muonSubLead ? "MUON" : (electronSubLead ? "ELECTRON" : "UNKNOWN")) 
 	 << "; charge=" << lep2->charge() << "; pt=" << lep2->pt() 
-	 << "; eta=" << lep2->eta() << "; phi=" << lep2->phi() << endl;
+	 << "; eta=" << lep2->eta() << "; phi=" << lep2->phi() << "; relIsoCorr=" << relIso2 << endl;
   }
 
 
@@ -350,9 +399,29 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
 
   // Get the leading "extra lepton" ("third lepton")
   CandidatePtr leadExtraLept;
-  double leadExtraLeptPt=0.;
-  string leadExtraLeptType;
   float leadExtraLeptId=0.;
+  string leadExtraLeptType;
+  float leadExtraLeptIsGM=-1.;
+  float leadExtraLeptIsGMPT=-1.;
+  float leadExtraLeptIsTM=-1.;
+  float leadExtraLeptIsTMLSL=-1.;
+  float leadExtraLeptIsTMLST=-1.;
+  float leadExtraLeptIsTMLSAL=-1.;
+  float leadExtraLeptIsTMLSAT=-1.;
+  float leadExtraLeptPt=0.;
+  float leadExtraLeptEta=-9999.;
+  float leadExtraLeptTrkChi2=-1.;
+  float leadExtraLeptGlbChi2=-1.;
+  float leadExtraLeptRelIso=-1.;
+  float leadExtraLeptNPixHits=-1.;
+  float leadExtraLeptNTrkHits=-1.;
+  float leadExtraLeptNTrkLostInnHits=-1.;
+  float leadExtraLeptNTrkLostOutHits=-1.;
+  float leadExtraLeptNMuHits=-1.;
+  float leadExtraLeptNMuMatch=-1.;
+  float leadExtraLeptDxy=-1.;
+  float leadExtraLeptDz=-1.;
+  float leadExtraLeptMetTransMass=-1.;
 
   // Get the collection of selected, isolated muons
   vector<const pat::Muon *> allSelMuons;
@@ -387,9 +456,63 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   }
   if(debug) {
     cout << "# of selected, isolated electrons: " << allSelElectrons.size() << endl;
-    if(leadExtraLept.get()!=0) 
+  }
+
+  const pat::Muon *mu3=dynamic_cast<const pat::Muon *>(leadExtraLept.get());
+  const pat::Electron *el3=dynamic_cast<const pat::Electron *>(leadExtraLept.get());
+
+  if(leadExtraLept.get()!=0) {
+    leadExtraLeptEta=leadExtraLept->eta();
+    double Aeff3;
+    if( abs(leadExtraLeptId)==13 ) {
+      if( mu3==0 ) {
+	cout << "[ZZllvvAnalyzer] *** Error: Leading extra lepton is a muon, "
+	     << "but dynamic_cast failed!" << endl;
+	throw std::exception();
+      }
+      leadExtraLeptIsGM    =float(mu3->isGlobalMuon());
+      leadExtraLeptIsGMPT  =float(mu3->muonID("GlobalMuonPromptTight"));
+      leadExtraLeptIsTM    =float(mu3->isTrackerMuon());
+      leadExtraLeptIsTMLSL =float(mu3->muonID("TMLastStationLoose"));
+      leadExtraLeptIsTMLST =float(mu3->muonID("TMLastStationTight"));
+      leadExtraLeptIsTMLSAL=float(mu3->muonID("TMLastStationAngLoose"));
+      leadExtraLeptIsTMLSAT=float(mu3->muonID("TMLastStationAngTight"));
+      leadExtraLeptTrkChi2=mu3->innerTrack()->normalizedChi2();
+      if(mu3->isGlobalMuon()) leadExtraLeptGlbChi2=mu3->globalTrack()->normalizedChi2();
+      leadExtraLeptNPixHits=mu3->innerTrack()->hitPattern().numberOfValidPixelHits();
+      leadExtraLeptNTrkHits=mu3->innerTrack()->hitPattern().numberOfValidTrackerHits();
+      leadExtraLeptNTrkLostInnHits=mu3->innerTrack()->trackerExpectedHitsInner().numberOfLostHits();
+      leadExtraLeptNTrkLostOutHits=mu3->innerTrack()->trackerExpectedHitsOuter().numberOfLostHits();
+      if(mu3->isGlobalMuon()) leadExtraLeptNMuHits=mu3->globalTrack()->hitPattern().numberOfValidMuonHits();
+      leadExtraLeptNMuMatch=mu3->numberOfMatches();
+      leadExtraLeptDxy=fabs( mu3->innerTrack()->dxy(vtx->position()) );
+      leadExtraLeptDz=fabs( mu3->innerTrack()->dz(vtx->position()) );
+      Aeff3=muonEffectiveArea;
+    }
+    else if( abs(leadExtraLeptId)==11 ) {
+      if( el3==0 ) {
+	cout << "[ZZllvvAnalyzer] *** Error: Leading extra lepton is an electron, "
+	     << "but dynamic_cast failed!" << endl;
+	throw std::exception();
+      }
+      leadExtraLeptTrkChi2=el3->gsfTrack()->normalizedChi2();
+      leadExtraLeptNPixHits=el3->gsfTrack()->hitPattern().numberOfValidPixelHits();
+      leadExtraLeptNTrkHits=el3->gsfTrack()->hitPattern().numberOfValidTrackerHits();
+      leadExtraLeptNTrkLostInnHits=el3->gsfTrack()->trackerExpectedHitsInner().numberOfLostHits();
+      leadExtraLeptNTrkLostOutHits=el3->gsfTrack()->trackerExpectedHitsOuter().numberOfLostHits();
+      leadExtraLeptDxy=fabs( el3->gsfTrack()->dxy(vtx->position()) );
+      leadExtraLeptDz=fabs( el3->gsfTrack()->dz(vtx->position()) );
+      Aeff3=electronEffectiveArea;
+    }
+    vector<double> lepIso3=dilepton::getLeptonIso(leadExtraLept);
+    leadExtraLeptRelIso=(lepIso3[dilepton::TRACKER_ISO]
+			 +max(lepIso3[dilepton::ECAL_ISO]
+			      +lepIso3[dilepton::HCAL_ISO]
+			      -Aeff3*rho, 0.0)) / leadExtraLeptPt;    
+    if(debug) {
       cout << " Leading extra lepton: " << leadExtraLeptType.c_str() 
-	   << ", pt=" << leadExtraLeptPt << endl;
+	   << ", pt=" << leadExtraLeptPt << "; relIsoCorr=" << leadExtraLeptRelIso << endl;
+    }
   }
 
   int totNumberOfSelElectrons=allSelElectrons.size();
@@ -404,7 +527,19 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   // Get the "leading" extra track
   reco::MuonRef leadExtraTrk;
   reco::MuonRefVector leadExtraTrkV; // to comply with Histograms.h format
-  double leadExtraTrkPt=0.;
+  float leadExtraTrkPt=0.;
+  float leadExtraTrkEta=-9999.;
+  float leadExtraTrkTrkChi2=-1.;
+  float leadExtraTrkIsoNTrks=-1.;
+  float leadExtraTrkIsoSumPt=-1.;
+  float leadExtraTrkRelIso=-1.;
+  float leadExtraTrkNPixHits=-1.;
+  float leadExtraTrkNTrkHits=-1.;
+  float leadExtraTrkNTrkLostInnHits=-1.;
+  float leadExtraTrkNTrkLostOutHits=-1.;
+  float leadExtraTrkDxy=-1.;
+  float leadExtraTrkDz=-1.;
+  float leadExtraTrkMetTransMass=-1.;
   // Get the collection of selected, isolated tracks
   edm::Handle<reco::MuonCollection> hTracks;
   reco::MuonRefVector selIsoTracks;
@@ -436,7 +571,21 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
 
   } // end for(reco::MuonCollection::size_type itTrk=0; itTrk<hTracks->size(); ++itTrk)
 
-  if(leadExtraTrk.get()!=0) leadExtraTrkV.push_back(leadExtraTrk);
+  if(leadExtraTrk.get()!=0) {
+    leadExtraTrkV.push_back(leadExtraTrk);
+    leadExtraTrkEta=leadExtraTrk->eta();
+    leadExtraTrkTrkChi2=leadExtraTrk->innerTrack()->normalizedChi2();
+    leadExtraTrkIsoNTrks=leadExtraTrk->isolationR03().nTracks;
+    leadExtraTrkIsoSumPt=leadExtraTrk->isolationR03().sumPt;
+    leadExtraTrkRelIso=leadExtraTrk->isolationR03().sumPt/leadExtraTrkPt;
+    leadExtraTrkNPixHits=leadExtraTrk->innerTrack()->hitPattern().numberOfValidPixelHits();
+    leadExtraTrkNTrkHits=leadExtraTrk->innerTrack()->hitPattern().numberOfValidTrackerHits();
+    leadExtraTrkNTrkLostInnHits=leadExtraTrk->innerTrack()->trackerExpectedHitsInner().numberOfLostHits();
+    leadExtraTrkNTrkLostOutHits=leadExtraTrk->innerTrack()->trackerExpectedHitsOuter().numberOfLostHits();
+    leadExtraTrkDxy=fabs( leadExtraTrk->innerTrack()->dxy(vtx->position()) );
+    leadExtraTrkDz=fabs( leadExtraTrk->innerTrack()->dz(vtx->position()) );
+  }
+
   if(debug) {
     cout << "# of selected tracks: " << selIsoTracks.size() << endl;
     if(leadExtraTrk.get()!=0) 
@@ -609,7 +758,33 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   // =====================================================================
   //
   thiscut="LeptonVeto";
-  if(totNumberOfSelLeptons>0) {  // N.B. totNumberOfSelLeptons is the number of extra leptons, so must be = 0. 
+  //  if(totNumberOfSelLeptons>0) {  // N.B. totNumberOfSelLeptons is the number of extra leptons, so must be = 0. 
+  bool leptonVetoPass(true);
+  if( leadExtraLept.get()!=0 ) {
+    if( abs(leadExtraLeptId)==13 ) {
+      if( leadExtraLeptNPixHits>0.5     &&
+	  leadExtraLeptNTrkHits>10.5    && 
+	  ( leadExtraLeptIsGMPT>0.5     || 
+	    (leadExtraLeptIsTM>0.5      && 
+	     leadExtraLeptNMuMatch>1.5  && 
+	     leadExtraLeptTrkChi2<4.) ) && 
+	  ( (leadExtraLeptPt>10.        && 
+	     leadExtraLeptRelIso<0.3)   || 
+	    (leadExtraLeptPt>5.         && 
+	     leadExtraLeptRelIso<0.05) )    ) {
+	leptonVetoPass=false;
+      }
+    }
+    else if( abs(leadExtraLeptId)==11 ) {
+      if( (leadExtraLeptPt>10.        && 
+	   leadExtraLeptRelIso<0.3)   || 
+	  (leadExtraLeptPt>5.         && 
+	   leadExtraLeptRelIso<0.05) ) {
+	leptonVetoPass=false;
+      }
+    }
+  }
+  if(!leptonVetoPass) {
     passedCuts[thiscut.Data()]=0;
     passedCuts["AllCutsPassed"]=0;
   }
@@ -625,6 +800,7 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   ////////////
 
 
+  /*
   ////////////
   //
   // =====================================================================
@@ -646,7 +822,7 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
 	      moreSelJetMomenta, leadJet);
   //
   ////////////
-
+  */
 
   ////////////
   //
@@ -679,6 +855,10 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   // ********************* //
   // ********************* //
 
+  // Some extra variables
+  leadExtraLeptMetTransMass=(leadExtraLept.get()!=0 ? sqrt( 2*met->pt()*leadExtraLept->pt()*(1. - cos(deltaPhi(met->phi(), leadExtraLept->phi()))) ) : -1.);
+  leadExtraTrkMetTransMass=(leadExtraTrk.get()!=0 ? sqrt( 2*met->pt()*leadExtraTrk->pt()*(1. - cos(deltaPhi(met->phi(), leadExtraTrk->phi()))) ) : -1.);
+
   float tmpVars[nVarsOpt+nSteps+1];
   unsigned int tmpCnt=0;
   //
@@ -691,6 +871,7 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   tmpVars[tmpCnt++]=lep2->charge();
   tmpVars[tmpCnt++]=lep1->pt();
   tmpVars[tmpCnt++]=lep2->pt();
+  tmpVars[tmpCnt++]=diLeptonMom.pt();
   tmpVars[tmpCnt++]=diLeptonMom.mass();
   tmpVars[tmpCnt++]=hDileptKin.back()->dileptLeadDeltaPhi;
   tmpVars[tmpCnt++]=hDileptKin.back()->leptMinusCmCosTheta;
@@ -707,15 +888,41 @@ void ZZllvvAnalyzer::analyze(const Event& event, const EventSetup& eSetup) {
   tmpVars[tmpCnt++]=redMETComputer_std->metProjComponents().second;
   tmpVars[tmpCnt++]=redMETComputer_std->recoilProjComponents().first; 
   tmpVars[tmpCnt++]=redMETComputer_std->recoilProjComponents().second;
-  tmpVars[tmpCnt++]=leadExtraLeptPt;
   tmpVars[tmpCnt++]=leadExtraLeptId;
+  tmpVars[tmpCnt++]=leadExtraLeptIsGM;
+  tmpVars[tmpCnt++]=leadExtraLeptIsGMPT;
+  tmpVars[tmpCnt++]=leadExtraLeptIsTM;
+  tmpVars[tmpCnt++]=leadExtraLeptIsTMLSL;
+  tmpVars[tmpCnt++]=leadExtraLeptIsTMLST;
+  tmpVars[tmpCnt++]=leadExtraLeptIsTMLSAL;
+  tmpVars[tmpCnt++]=leadExtraLeptIsTMLSAT;
+  tmpVars[tmpCnt++]=leadExtraLeptPt;
+  tmpVars[tmpCnt++]=leadExtraLeptEta;
+  tmpVars[tmpCnt++]=leadExtraLeptTrkChi2;
+  tmpVars[tmpCnt++]=leadExtraLeptGlbChi2;
+  tmpVars[tmpCnt++]=leadExtraLeptRelIso;
+  tmpVars[tmpCnt++]=leadExtraLeptNPixHits;
+  tmpVars[tmpCnt++]=leadExtraLeptNTrkHits;
+  tmpVars[tmpCnt++]=leadExtraLeptNTrkLostInnHits;
+  tmpVars[tmpCnt++]=leadExtraLeptNTrkLostOutHits;
+  tmpVars[tmpCnt++]=leadExtraLeptNMuHits;
+  tmpVars[tmpCnt++]=leadExtraLeptNMuMatch;
+  tmpVars[tmpCnt++]=leadExtraLeptDxy;
+  tmpVars[tmpCnt++]=leadExtraLeptDz;
+  tmpVars[tmpCnt++]=leadExtraLeptMetTransMass;
   tmpVars[tmpCnt++]=leadExtraTrkPt;
-  tmpVars[tmpCnt++]=(leadExtraTrk.get() ? leadExtraTrk->isolationR03().nTracks : -1.);
-  tmpVars[tmpCnt++]=(leadExtraTrk.get() ? leadExtraTrk->isolationR03().sumPt : -1.);
-  tmpVars[tmpCnt++]=(leadExtraTrk.get() ? leadExtraTrk->isolationR03().sumPt/leadExtraTrkPt : -1.);
-  tmpVars[tmpCnt++]=(leadExtraTrk.get() ? leadExtraTrk->innerTrack()->normalizedChi2() : -1.);
-  tmpVars[tmpCnt++]=(leadExtraTrk.get() ? leadExtraTrk->innerTrack()->hitPattern().numberOfValidPixelHits() : -1.);
-  tmpVars[tmpCnt++]=(leadExtraTrk.get() ? leadExtraTrk->innerTrack()->hitPattern().numberOfValidTrackerHits() : -1.);
+  tmpVars[tmpCnt++]=leadExtraTrkEta;
+  tmpVars[tmpCnt++]=leadExtraTrkTrkChi2;
+  tmpVars[tmpCnt++]=leadExtraTrkIsoNTrks;
+  tmpVars[tmpCnt++]=leadExtraTrkIsoSumPt;
+  tmpVars[tmpCnt++]=leadExtraTrkRelIso;
+  tmpVars[tmpCnt++]=leadExtraTrkNPixHits;
+  tmpVars[tmpCnt++]=leadExtraTrkNTrkHits;
+  tmpVars[tmpCnt++]=leadExtraTrkNTrkLostInnHits;
+  tmpVars[tmpCnt++]=leadExtraTrkNTrkLostOutHits;
+  tmpVars[tmpCnt++]=leadExtraTrkDxy;
+  tmpVars[tmpCnt++]=leadExtraTrkDz;
+  tmpVars[tmpCnt++]=leadExtraTrkMetTransMass;
   if(tmpCnt!=nVarsOpt) {
     cout << "[ZZllvvAnalyzer] *** Error: wrong number of "
 	 << "variables used to fill the tree!" << endl;
