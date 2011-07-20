@@ -4,8 +4,8 @@
 /** \class Histograms
  *  No description available.
  *
- *  $Date: 2011/06/22 13:55:11 $
- *  $Revision: 1.2 $
+ *  $Date: 2011/07/11 19:28:20 $
+ *  $Revision: 1.3 $
  *  \author G. Cerminara - CERN
  */
 
@@ -636,7 +636,8 @@ public:
     double etZ1=sqrt( pt1*pt1 + 91.1876*91.1876 );
     double etZ2=sqrt( pt2*pt2 + 91.1876*91.1876 );
     double etZtot=etZ1+etZ2;
-    hTransMass->Fill( sqrt(etTot*etTot - ptTot*ptTot), weight );
+    transvMass=sqrt(etTot*etTot - ptTot*ptTot);
+    hTransMass->Fill( transvMass, weight );
     hTransMassZZ->Fill( sqrt(etZtot*etZtot - ptTot*ptTot), weight );
   }
 #endif
@@ -655,6 +656,9 @@ public:
   TH1F *hCosAngle;
   TH1F *hTransMass;
   TH1F *hTransMassZZ; // Hypothesis: ZZ
+
+  // For easy access
+  float transvMass;
 };
 
 
