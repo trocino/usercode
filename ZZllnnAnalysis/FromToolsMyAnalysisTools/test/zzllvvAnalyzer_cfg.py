@@ -4,7 +4,6 @@ process = cms.Process("HtoZZto2l2nu")
 
 from CMGTools.HtoZZ2l2nu.localPatTuples_cff import *
 process.source = cms.Source("PoolSource",
-#                            fileNames = getLocalSourceFor('GluGluToHToZZTo2L2NuM400'),
                             inputCommands = cms.untracked.vstring('keep *',
                                                                   'drop *_MEtoEDMConverter_*_*'),
                             fileNames = cms.untracked.vstring('rfio:/castor/cern.ch/cms/store/cmst3/user/cerminar/ZZllvv_sel3/DYJetsToLL_PU2010/patTuple_99_1_mox.root')
@@ -13,10 +12,12 @@ process.source = cms.Source("PoolSource",
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
 
 process.load('CMGTools.HtoZZ2l2nu.NormalizationCounter_cfi')
+process.load('CMGTools.HtoZZ2l2nu.PileupNormalizationProducer_cfi')
 process.load('CMGTools.HtoZZ2l2nu.CleanEventProducer_cfi')
 process.load('CMGTools.HtoZZ2l2nu.CleanEventFilter_cfi')
 process.load('CMGTools.HtoZZ2l2nu.CleanEventAnalyzer_cfi')
 
+#process.cleanEvent.LooseElectrons.id = cms.string("eidVBTF85")
 
 from CMGTools.HtoZZ2l2nu.StandardSelections_cfi import *
 from SimGeneral.MixingModule.mix_E7TeV_FlatDist10_2011EarlyData_inTimeOnly_cfi import mix
@@ -30,46 +31,18 @@ process.zzllvvAnalyzer = cms.EDAnalyzer("ZZllvvAnalyzer",
                                         branchingRatio = cms.untracked.double(1.0),
                                         luminosity = cms.untracked.double(1.0),
                                         debug = cms.untracked.bool(False),
-                                        #Generator = BaseGeneratorSelection.clone(),
                                         Vertices = BaseVertexSelection.clone(),
-                                        #Muons = BaseMuonsSelection.clone(),
-                                        #Electrons = BaseElectronsSelection.clone(),
-                                        #Dileptons = BaseDileptonSelection.clone(),
-                                        #Jets = BaseJetSelection.clone(),
-                                        #MET = BaseMetSelection.clone(),
-                                        FlavorCombination = cms.untracked.int32(0),    ## 0=ee/mm (default), 1=mm, 2=ee, 3=em; 4=any combination
-                                        ChargeCombination = cms.untracked.int32(-1),   ## 0=any, -1=opposite (default), 1=same
+                                        FlavorCombination = cms.untracked.int32(4),    ## 0=ee/mm (default), 1=mm, 2=ee, 3=em; 4=any combination
+                                        ChargeCombination = cms.untracked.int32(0),   ## 0=any, -1=opposite (default), 1=same
                                         RecoilLongWeight = cms.untracked.double(2.0),
                                         RecoilPerpWeight = cms.untracked.double(2.0),
                                         SigmaPtLongWeight = cms.untracked.double(2.8),
                                         SigmaPtPerpWeight = cms.untracked.double(2.8),
                                         PerpComponentWeight = cms.untracked.double(1.0),
-                                        RedMETMinCut = cms.untracked.double(35.0),
+                                        RedMETMinCut = cms.untracked.double(40.0),
+                                        UseAllJets = cms.untracked.bool(True),
                                         )
 
-# flavorLabel=""
-# if process.zzllvvAnalyzer.FlavorCombination == 0:
-#     flavorLabel="eemm"
-# elif process.zzllvvAnalyzer.FlavorCombination == 1:
-#     flavorLabel="mm"
-# elif process.zzllvvAnalyzer.FlavorCombination == 2:
-#     flavorLabel="ee"
-# elif process.zzllvvAnalyzer.FlavorCombination == 3:
-#     flavorLabel="em"
-# else:
-#     flavorLabel="anyFlav"
-
-# chargeLabel=""
-# if process.zzllvvAnalyzer.ChargeCombination == -1:
-#     chargeLabel="opp"
-# elif process.zzllvvAnalyzer.ChargeCombination == 0:
-#     chargeLabel="any"
-# elif process.zzllvvAnalyzer.ChargeCombination == 1:
-#     chargeLabel="same"
-# else:
-#     chargeLabel="wrong"
-
-# process.zzllvvAnalyzer.fileName = cms.untracked.string('ZZllvvAnalyzer_'+flavorLabel+'_'+chargeLabel+'Charge.root')
 
 process.llnnFilter = cms.EDFilter("ZZllnnFilter")
 
@@ -93,7 +66,7 @@ process.out = cms.OutputModule("PoolOutputModule",
                                )
 
 
-process.baseSeq = cms.Sequence(process.loadNormalizationCounters*process.cleanEvent*process.cleanEventFilter*process.zzllvvAnalyzer)
+process.baseSeq = cms.Sequence(process.loadNormalizationCounters*process.puWeights*process.cleanEvent*process.cleanEventFilter*process.zzllvvAnalyzer)
 process.llnnFilt = cms.Sequence(process.llnnFilter)
 process.llnnAntifilt = cms.Sequence(~process.llnnFilter)
 process.p = cms.Path(process.baseSeq)

@@ -4,8 +4,8 @@
 /** \class ZZllvvAnalyzer
  *  No description available.
  *
- *  $Date: 2011/06/22 14:04:17 $
- *  $Revision: 1.3 $
+ *  $Date: 2011/07/11 19:28:23 $
+ *  $Revision: 1.4 $
  *  \author G. Cerminara - CERN
  *          D. Trocino   - Northeastern University
  */
@@ -81,6 +81,7 @@ private:
   double kSigmaPtPerpWeight;
   double kPerpComponentWeight;
   double theRedMETMinCut;
+  bool useAllJets;
 
   void initializePlots();
   void fillPlots(std::string, 
@@ -89,15 +90,17 @@ private:
 		 unsigned int, 
 		 int, 
 		 int, 
-		 const reco::CandidatePtr, 
-		 const reco::CandidatePtr, 
 		 reco::CandidatePtr, 
-		 edm::RefVector<std::vector<reco::Muon> > &, 
-		 edm::RefVector<std::vector<reco::Muon> > &, 
+		 reco::CandidatePtr, 
+		 reco::CandidatePtr, 
+		 double, double, double, 
+		 //edm::RefVector<std::vector<reco::Muon> > &, 
+		 //edm::RefVector<std::vector<reco::Muon> > &, 
 		 const pat::MET *, 
 		 ReducedMETComputer *, 
-		 std::vector<LorentzVector> &,
-		 int);
+		 std::vector<LorentzVector> &//,
+		 //int
+		 );
   void scalePlots(double);
   void writePlots();
   std::vector<double> makePuDistr(const edm::ParameterSet&);

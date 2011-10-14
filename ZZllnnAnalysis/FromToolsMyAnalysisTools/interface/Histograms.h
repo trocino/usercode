@@ -4,8 +4,8 @@
 /** \class Histograms
  *  No description available.
  *
- *  $Date: 2011/07/11 19:28:20 $
- *  $Revision: 1.3 $
+ *  $Date: 2011/07/20 11:31:01 $
+ *  $Revision: 1.4 $
  *  \author G. Cerminara - CERN
  */
 
@@ -26,13 +26,14 @@
 #include "DataFormats/Math/interface/deltaPhi.h"
 #include "DataFormats/Math/interface/deltaR.h"
 //#include "PhysicsTools/CandUtils/interface/Booster.h"
-#include "CMGTools/HtoZZ2l2nu/interface/Utils.h"
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "CMGTools/HtoZZ2l2nu/interface/ReducedMETComputer.h"
+#include "CMGTools/HtoZZ2l2nu/interface/Utils.h"
+#include "CMGTools/HtoZZ2l2nu/interface/ObjectFilters.h"
 #endif
 
 using namespace std;
@@ -306,7 +307,7 @@ public:
   
   
 #ifndef ROOTANALYSIS
-  void Fill(const reco::CandidatePtr lept, const reco::Vertex *vtx, int nVtx, double weight) {
+  void Fill(reco::CandidatePtr &lept, const reco::Vertex *vtx, int nVtx, double puOffset, double weight) {
 
     const pat::Muon *muon=dynamic_cast<const pat::Muon*>(lept.get());
     const pat::Electron *ele=dynamic_cast<const pat::Electron*>(lept.get());
@@ -314,7 +315,7 @@ public:
       cout << "[Histograms] *** Error: lepton is neither a muon nor an electron!" << endl;
       throw std::exception();
     }
-    double relIso = (muon ? Utils::computeRelIsolation(muon) : Utils::computeRelIsolation(ele));
+    double relIso=lepton::getLeptonIso(lept, 1., puOffset)[lepton::REL_ISO];
     int type = (muon ? Utils::muonType(muon) : Utils::muonType(ele));
     const reco::Track *track=(muon ? muon->track().get() : ele->gsfTrack().get());
     double dz=fabs(track->dz(vtx->position()));
@@ -546,6 +547,7 @@ public:
     hAngle       = new TH1F(theName+"_hAngle","angle(1, 2)", 100, 0., 3.15);
     hCosAngle    = new TH1F(theName+"_hCosAngle","cosine of angle(1, 2)", 100, -1., 1.);
     hTransMass   = new TH1F(theName+"_hTransMass", "Transverse mass", 100, 0., 500.);
+    hTransMassZ  = new TH1F(theName+"_hTransMassZ", "Z+massless part. transverse mass", 100, 0., 500.);
     hTransMassZZ = new TH1F(theName+"_hTransMassZZ", "ZZ transverse mass", 100, 0., 500.);
 
     hDeltaPhi->Sumw2();
@@ -555,7 +557,12 @@ public:
     hAngle->Sumw2();
     hCosAngle->Sumw2();
     hTransMass->Sumw2();
+    hTransMassZ->Sumw2();
     hTransMassZZ->Sumw2();
+
+    transverseMass=0.;
+    transverseMassZ=0.;
+    transverseMassZZ=0.;
   }
 
 
@@ -567,7 +574,12 @@ public:
     hAngle       = 0;
     hCosAngle    = 0;
     hTransMass   = 0;
+    hTransMassZ  = 0;
     hTransMassZZ = 0;
+
+    transverseMass=0.;
+    transverseMassZ=0.;
+    transverseMassZZ=0.;
   }
 
 
@@ -579,6 +591,7 @@ public:
     hAngle       = (TH1F *)file->Get(theName+"_hAngle");
     hCosAngle    = (TH1F *)file->Get(theName+"_hCosAngle");
     hTransMass   = (TH1F *)file->Get(theName+"_hTransMass");
+    hTransMassZ  = (TH1F *)file->Get(theName+"_hTransMassZ");
     hTransMassZZ = (TH1F *)file->Get(theName+"_hTransMassZZ");
  }
 
@@ -591,6 +604,7 @@ public:
     if(hAngle       != 0) hAngle->Add(histSet->hAngle);
     if(hCosAngle    != 0) hCosAngle->Add(histSet->hCosAngle);
     if(hTransMass   != 0) hTransMass->Add(histSet->hTransMass);
+    if(hTransMassZ  != 0) hTransMassZ->Add(histSet->hTransMassZ);
     if(hTransMassZZ != 0) hTransMassZZ->Add(histSet->hTransMassZZ);
   }
 
@@ -602,6 +616,7 @@ public:
     if(hAngle       != 0) hAngle->Scale(scaleFact);
     if(hCosAngle    != 0) hCosAngle->Scale(scaleFact);
     if(hTransMass   != 0) hTransMass->Scale(scaleFact);
+    if(hTransMassZ  != 0) hTransMassZ->Scale(scaleFact);
     if(hTransMassZZ != 0) hTransMassZZ->Scale(scaleFact);
   }
 
@@ -614,6 +629,7 @@ public:
     if(hAngle       != 0) hAngle->Write();
     if(hCosAngle    != 0) hCosAngle->Write();
     if(hTransMass   != 0) hTransMass->Write();
+    if(hTransMassZ  != 0) hTransMassZ->Write();
     if(hTransMassZZ != 0) hTransMassZZ->Write();
   }
   
@@ -631,14 +647,18 @@ public:
     hCosAngle->Fill( tm1.Unit().Dot(tm2.Unit()), weight );
     double pt1=sqrt(tm1.perp2());
     double pt2=sqrt(tm2.perp2());
-    double etTot=pt1+pt2;
     double ptTot=sqrt((tm1+tm2).perp2());
     double etZ1=sqrt( pt1*pt1 + 91.1876*91.1876 );
     double etZ2=sqrt( pt2*pt2 + 91.1876*91.1876 );
-    double etZtot=etZ1+etZ2;
-    transvMass=sqrt(etTot*etTot - ptTot*ptTot);
-    hTransMass->Fill( transvMass, weight );
-    hTransMassZZ->Fill( sqrt(etZtot*etZtot - ptTot*ptTot), weight );
+    double etTot=pt1+pt2;
+    double etZtot=etZ1+pt2;
+    double etZZtot=etZ1+etZ2;
+    transverseMass=sqrt(etTot*etTot - ptTot*ptTot);
+    transverseMassZ=sqrt(etZtot*etZtot - ptTot*ptTot);
+    transverseMassZZ=sqrt(etZZtot*etZZtot - ptTot*ptTot);
+    hTransMass->Fill(transverseMass, weight );
+    hTransMassZ->Fill(transverseMassZ, weight );
+    hTransMassZZ->Fill(transverseMassZZ, weight );
   }
 #endif
 
@@ -655,10 +675,13 @@ public:
   TH1F *hAngle;
   TH1F *hCosAngle;
   TH1F *hTransMass;
+  TH1F *hTransMassZ; // Hypothesis: Z+massless
   TH1F *hTransMassZZ; // Hypothesis: ZZ
 
   // For easy access
-  float transvMass;
+  double transverseMass;
+  double transverseMassZ;
+  double transverseMassZZ;
 };
 
 
@@ -1019,14 +1042,12 @@ public:
     hRecoilCompPerp = new TH1F(theName+ "_hRecoilCompPerp","title",150,-150,150);
     hMetCompLong = new TH1F(theName+ "_hMetCompLong","title",150,-150,150);
     hMetCompPerp = new TH1F(theName+ "_hMetCompPerp","title",150,-150,150);
+    hUnclusteredCompLong = new TH1F(theName+ "_hUnclusteredCompLong","title",150,-150,150);
+    hUnclusteredCompPerp = new TH1F(theName+ "_hUnclusteredCompPerp","title",150,-150,150);
     hSumJetCompLong = new TH1F(theName+ "_hSumJetCompLong","title",150,-150,150);
     hSumJetCompPerp = new TH1F(theName+ "_hSumJetCompPerp","title",150,-150,150);
     hDileptonCompLong = new TH1F(theName+ "_hDileptonCompLong","title",150,0,150);
     hDileptonCompPerp = new TH1F(theName+ "_hDileptonCompPerp","title",150,0,150);
-
-    hDileptSigmaPtCompLong  = new TH1F(theName+ "_hDileptSigmaPtCompLong","title",150,0,150);
-    hDileptSigmaPtCompPerp = new TH1F(theName+ "_hDileptSigmaPtCompPerp","title",150,0,150);
-
     hDileptSigmaPtCompLong  = new TH1F(theName+ "_hDileptSigmaPtCompLong","title",100,-50,0);
     hDileptSigmaPtCompPerp = new TH1F(theName+ "_hDileptSigmaPtCompPerp","title",100,-50,0.);
 
@@ -1059,6 +1080,8 @@ public:
     hRecoilCompPerp->Sumw2();
     hMetCompLong->Sumw2();
     hMetCompPerp->Sumw2();
+    hUnclusteredCompLong->Sumw2();
+    hUnclusteredCompPerp->Sumw2();
     hSumJetCompLong->Sumw2();
     hSumJetCompPerp->Sumw2();
     hDileptonCompLong->Sumw2();
@@ -1093,6 +1116,8 @@ public:
     hRecoilCompPerp = 0;
     hMetCompLong = 0;
     hMetCompPerp = 0;
+    hUnclusteredCompLong = 0;
+    hUnclusteredCompPerp = 0;
     hSumJetCompLong = 0;
     hSumJetCompPerp = 0;
     hDileptonCompLong = 0;
@@ -1128,6 +1153,8 @@ public:
     hRecoilCompPerp = (TH1F *) file->Get(theName+"_hRecoilCompPerp");
     hMetCompLong = (TH1F *) file->Get(theName+"_hMetCompLong");
     hMetCompPerp = (TH1F *) file->Get(theName+"_hMetCompPerp");
+    hUnclusteredCompLong = (TH1F *) file->Get(theName+"_hUnclusteredCompLong");
+    hUnclusteredCompPerp = (TH1F *) file->Get(theName+"_hUnclusteredCompPerp");
     hSumJetCompLong = (TH1F *) file->Get(theName+"_hSumJetCompLong");
     hSumJetCompPerp = (TH1F *) file->Get(theName+"_hSumJetCompPerp");
     hDileptonCompLong = (TH1F *) file->Get(theName+"_hDileptonCompLong");
@@ -1168,6 +1195,8 @@ public:
     if(hRecoilCompPerp !=0) hRecoilCompPerp->Clone((ret->theName+"_hRecoilCompPerp").Data());
     if(hMetCompLong !=0) hMetCompLong->Clone((ret->theName+"_hMetCompLong").Data());
     if(hMetCompPerp !=0) hMetCompPerp->Clone((ret->theName+"_hMetCompPerp").Data());
+    if(hUnclusteredCompLong !=0) hUnclusteredCompLong->Clone((ret->theName+"_hUnclusteredCompLong").Data());
+    if(hUnclusteredCompPerp !=0) hUnclusteredCompPerp->Clone((ret->theName+"_hUnclusteredCompPerp").Data());
     if(hSumJetCompLong !=0) hSumJetCompLong->Clone((ret->theName+"_hSumJetCompLong").Data());
     if(hSumJetCompPerp !=0) hSumJetCompPerp->Clone((ret->theName+"_hSumJetCompPerp").Data());
     if(hDileptonCompLong !=0) hDileptonCompLong->Clone((ret->theName+"_hDileptonCompLong").Data());
@@ -1204,6 +1233,8 @@ public:
     if(hRecoilCompPerp != 0) hRecoilCompPerp->Add(histSet->hRecoilCompPerp);
     if(hMetCompLong != 0) hMetCompLong->Add(histSet->hMetCompLong);
     if(hMetCompPerp != 0) hMetCompPerp->Add(histSet->hMetCompPerp);
+    if(hUnclusteredCompLong != 0) hUnclusteredCompLong->Add(histSet->hUnclusteredCompLong);
+    if(hUnclusteredCompPerp != 0) hUnclusteredCompPerp->Add(histSet->hUnclusteredCompPerp);
     if(hSumJetCompLong != 0) hSumJetCompLong->Add(histSet->hSumJetCompLong);
     if(hSumJetCompPerp != 0) hSumJetCompPerp->Add(histSet->hSumJetCompPerp);
     if(hDileptonCompLong != 0) hDileptonCompLong->Add(histSet->hDileptonCompLong);
@@ -1238,6 +1269,8 @@ public:
     if(hRecoilCompPerp != 0) hRecoilCompPerp->Scale(scaleFact);
     if(hMetCompLong != 0) hMetCompLong->Scale(scaleFact);
     if(hMetCompPerp != 0) hMetCompPerp->Scale(scaleFact);
+    if(hUnclusteredCompLong != 0) hUnclusteredCompLong->Scale(scaleFact);
+    if(hUnclusteredCompPerp != 0) hUnclusteredCompPerp->Scale(scaleFact);
     if(hSumJetCompLong != 0) hSumJetCompLong->Scale(scaleFact);
     if(hSumJetCompPerp != 0) hSumJetCompPerp->Scale(scaleFact);
     if(hDileptonCompLong != 0) hDileptonCompLong->Scale(scaleFact);
@@ -1271,6 +1304,8 @@ public:
     if(hRecoilCompPerp != 0) hRecoilCompPerp->Write();
     if(hMetCompLong != 0) hMetCompLong->Write();
     if(hMetCompPerp != 0) hMetCompPerp->Write();
+    if(hUnclusteredCompLong != 0) hUnclusteredCompLong->Write();
+    if(hUnclusteredCompPerp != 0) hUnclusteredCompPerp->Write();
     if(hSumJetCompLong != 0) hSumJetCompLong->Write();
     if(hSumJetCompPerp != 0) hSumJetCompPerp->Write();
     if(hDileptonCompLong != 0) hDileptonCompLong->Write();
@@ -1287,15 +1322,16 @@ public:
   }
 
 #ifndef ROOTANALYSIS
-  void Fill(const ReducedMETComputer* redMedComputer, double met, unsigned int nVtx, double weight) {
+  void Fill(ReducedMETComputer* redMedComputer, double met, unsigned int nVtx, double weight) {
     Fill(redMedComputer->reducedMET(),
 	 redMedComputer->reducedMETComponents().first, redMedComputer->reducedMETComponents().second, 
 	 redMedComputer->recoilProjComponents().first, redMedComputer->recoilProjComponents().second,
 	 redMedComputer->metProjComponents().first, redMedComputer->metProjComponents().second,
+	 redMedComputer->unclProjComponents().first, redMedComputer->unclProjComponents().second,
 	 redMedComputer->sumJetProjComponents().first, redMedComputer->sumJetProjComponents().second,
 	 redMedComputer->dileptonProjComponents().first, redMedComputer->dileptonProjComponents().second,
 	 redMedComputer->dileptonPtCorrComponents().first, redMedComputer->dileptonPtCorrComponents().second,
-	 redMedComputer->recoilType().first, redMedComputer->recoilType().second,
+	 redMedComputer->getPreferedRecoil().first, redMedComputer->getPreferedRecoil().second,
 	 met, 
 	 nVtx, 
 	 weight);
@@ -1307,6 +1343,7 @@ public:
 	    double redmet_long, double redmet_perp,
 	    double recoil_long, double recoil_perp,
 	    double met_long, double met_perp,
+	    double unclustered_long, double unclustered_perp,
 	    double sumjet_long, double sumjet_perp,
 	    double dilepton_long, double dilepton_perp,
 	    double dileptonSigma_long, double dileptonSigma_perp,
@@ -1331,6 +1368,8 @@ public:
     hRecoilCompPerp->Fill(recoil_perp, weight);
     hMetCompLong->Fill(met_long, weight);
     hMetCompPerp->Fill(met_perp, weight);
+    hUnclusteredCompLong->Fill(met_long, weight);
+    hUnclusteredCompPerp->Fill(met_perp, weight);
     hSumJetCompLong->Fill(sumjet_long, weight);
     hSumJetCompPerp->Fill(sumjet_perp, weight);
     hDileptonCompLong->Fill(dilepton_long, weight);
@@ -1368,6 +1407,8 @@ public:
   TH1F *hRecoilCompPerp;
   TH1F *hMetCompLong;
   TH1F *hMetCompPerp;
+  TH1F *hUnclusteredCompLong;
+  TH1F *hUnclusteredCompPerp;
   TH1F *hSumJetCompLong;
   TH1F *hSumJetCompPerp;
   TH1F *hDileptonCompLong;

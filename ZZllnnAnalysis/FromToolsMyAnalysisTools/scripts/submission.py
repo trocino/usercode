@@ -152,7 +152,7 @@ def createJobSetups(inputCfg, inputDir, outputDir, outputBaseName, flavorLab, ch
             scriptfile.write("cmsRun " + cfgfilename + " >& " + logfilename + "\n")
             scriptfile.write("rfcp " + outputFileName + " " + outputDir + "\n")
             scriptfile.write("rfcp " + logfilename + " " + outputDir + "\n")
-            scriptfile.write("rfcp " + outputEdmFileName + " " + outputDir + "\n")
+            scriptfile.write("#rfcp " + outputEdmFileName + " " + outputDir + "\n")
             scriptfile.write("#rfcp histograms.root " + outputDir + "/histograms_" +  str(indexJob) + ".root\n")
             scriptfile.write("\n")
             scriptfile.close()
