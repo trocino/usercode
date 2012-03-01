@@ -1,5 +1,5 @@
 /*
- *  $Date: 2011/07/11 19:28:25 $
+ *  $Date: 2012/03/01 09:35:17 $
  *  \author D. Trocino   - Northeastern University
  */
 
@@ -37,10 +37,10 @@ using namespace std;
 void macro_wzBkg() {
 
   int loaded = -1;
-  if( gSystem->IsFileInIncludePath("usefulFunctions_C.so") )
-    loaded = gSystem->Load("usefulFunctions_C.so");
+  if( gSystem->IsFileInIncludePath("../usefulFunctions_C.so") )
+    loaded = gSystem->Load("../usefulFunctions_C.so");
   if(loaded < 0)
-    gSystem->CompileMacro("usefulFunctions.C");
+    gSystem->CompileMacro("../usefulFunctions.C");
 
   initializeGlobalVariables();
 
