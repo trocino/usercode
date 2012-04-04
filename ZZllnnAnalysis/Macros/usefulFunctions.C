@@ -598,13 +598,19 @@ double getD0RedMet(double lpx1, double lpy1, double lpterr1,
     }
   }
 
+  // double wPerpMu = 1.0;
+  // double wRecMu  = 2.0;
+  // double wUncMu  = 2.5;
   double wPerpMu = 1.0;
-  double wRecMu  = 2.0;
-  double wUncMu  = 2.5;
+  double wRecMu  = 1.0;
+  double wUncMu  = 1.0;
 
-  double wPerpEl = 1.5;
-  double wRecEl  = 2.25;
-  double wUncEl  = 0.0;
+  // double wPerpEl = 1.5;
+  // double wRecEl  = 2.25;
+  // double wUncEl  = 0.0;
+  double wPerpEl = 1.0;
+  double wRecEl  = 1.0;
+  double wUncEl  = 1.0;
 
   double kPerp = 1.;
   double kRecoil_l = 1.;
@@ -651,7 +657,7 @@ double getD0RedMet(double lpx1, double lpy1, double lpterr1,
   TVector2 thr = lead-subl;
   TVector2 longi;
   TVector2 perpe;
-  double deltaPhi = lead.DeltaPhi(subl);
+  double deltaPhi = fabs(lead.DeltaPhi(subl));
 
   if( deltaPhi>(3.141592654/2.) ) {
     longi = thr.Unit();
@@ -685,8 +691,8 @@ double getD0RedMet(double lpx1, double lpy1, double lpterr1,
   // Recoil
   // double recoilProj_l = min( sumjetProj_l, -1.0*unclProj_l); recoilProj_l = min( 0., recoilProj_l );
   // double recoilProj_t = min( sumjetProj_t, -1.0*unclProj_t); recoilProj_t = min( 0., recoilProj_t );
-  double recoilProj_l = -1.0*unclProj_l; 
-  double recoilProj_t = -1.0*unclProj_t; 
+  double recoilProj_l = -1.0*unclProj_l; recoilProj_l = min( 0., recoilProj_l );
+  double recoilProj_t = -1.0*unclProj_t; recoilProj_t = min( 0., recoilProj_t );
 
   // Lepton uncertainty
   double relErrLead = min( leadpterr/leadpt, 1. );
