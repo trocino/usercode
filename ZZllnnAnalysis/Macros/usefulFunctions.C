@@ -27,7 +27,12 @@ std::vector<TString> cutCascade;                  // Chain of all cuts (data, MC
 std::vector<TString> variables;                   // Variables to plot
 std::vector<TString> xtitles;                     // Variables to plot
 std::vector<TString> ytitles;                     // Variables to plot
+std::map<TString, TString> xTitles;               // Variables to plot
+std::map<TString, TString> yTitles;               // Variables to plot
 std::vector<TString> binnings;                    // Binning and range limits
+std::map<TString, unsigned int> binsUInt;         // Binning and range limits
+std::map<TString, double> firstBinsDouble;        // Binning and range limits
+std::map<TString, double> lastBinsDouble;         // Binning and range limits
 unsigned int nVars=0;
 vector<double> puWeights;                         // Vector of weights for PU
 
@@ -45,11 +50,14 @@ void initializeGlobalVariables() {
   variables.clear();
   xtitles.clear();
   ytitles.clear();
+  xTitles.clear();
+  yTitles.clear();
   binnings.clear();
   nVars=0;
   return;
 }
 
+// For old macro
 void addVariable(TString newvar, TString newxtitle, TString newytitle, TString newbin="") {
   variables.push_back(newvar);
   xtitles.push_back(newxtitle);
@@ -59,6 +67,21 @@ void addVariable(TString newvar, TString newxtitle, TString newytitle, TString n
     ytitles.push_back("Events/");
   if(newbin.Length()>0) newbin="("+newbin+")";
   binnings.push_back(newbin);
+  nVars=variables.size();
+  return;
+}
+
+// For new macro
+void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, double newFirstBin, double newLastBin) {
+  variables.push_back(newvar);
+  xTitles[newvar] = newxtitle;
+  if(newytitle.Length()>0) 
+    yTitles[newvar] = newytitle;
+  else
+    yTitles[newvar] = "Events/";
+  binsUInt[newvar] = newBins;
+  firstBinsDouble[newvar] = newFirstBin;
+  lastBinsDouble[newvar] = newLastBin;
   nVars=variables.size();
   return;
 }
@@ -175,6 +198,19 @@ double getEta(double px, double py, double pz) {
 // Invariant mass
 double getMass(double e, double px, double py, double pz) {
   return sqrt( e*e - px*px - py*py - pz*pz );
+}
+
+// Get list of particles above some pt/Et
+std::vector<unsigned int> getListOfParticlesWithPt(UInt_t nPart, std::vector<Float_t> vPx, std::vector<Float_t> vPy, Float_t ptThr) {
+
+  std::vector<UInt_t> listParts;
+
+  for(UInt_t iPart=0; iPart<nPart; ++iPart) {
+    Float_t thisPt = getPt(vPx[iPart], vPy[iPart]);
+    if(thisPt>ptThr) listParts.push_back(iPart);
+  }
+
+  return listParts;
 }
 
 // Get detector-based isolation
@@ -582,7 +618,7 @@ double getD0RedMet(float flav,
 // D0 RedMET with CMG trees
 double getD0RedMet(double lpx1, double lpy1, double lpterr1, 
 		   double lpx2, double lpy2, double lpterr2, 
-		   //double njets, vector<double> jpx, vector<double> jpy, 
+		   double sumjpx, double sumjpy, 
 		   double pfmet, double pfmetphi, 
 		   int flav, int pickAFlav = 1) {
 
@@ -680,19 +716,17 @@ double getD0RedMet(double lpx1, double lpy1, double lpterr1,
   double unclProj_l = uncl*longi;
   double unclProj_t = uncl*perpe;
 
-  // // Sum jets
-  // TVector2 sumjet(0., 0.);
-  // for(int z=0; z<njets; ++z) {
-  //   sumjet += TVector2(jpx[z], jpy[z]);
-  // }
-  // double sumjetProj_l = sumjet*longi;
-  // double sumjetProj_t = sumjet*perpe;
+  // Sum of jets
+  TVector2 sumjVec(sumjpx, sumjpy);
+  double sumjetProj_l = sumjVec*longi;
+  double sumjetProj_t = sumjVec*perpe;
 
   // Recoil
-  // double recoilProj_l = min( sumjetProj_l, -1.0*unclProj_l); recoilProj_l = min( 0., recoilProj_l );
-  // double recoilProj_t = min( sumjetProj_t, -1.0*unclProj_t); recoilProj_t = min( 0., recoilProj_t );
-  double recoilProj_l = -1.0*unclProj_l; recoilProj_l = min( 0., recoilProj_l );
-  double recoilProj_t = -1.0*unclProj_t; recoilProj_t = min( 0., recoilProj_t );
+  double recoilProj_l = min( sumjetProj_l, -1.0*unclProj_l ); recoilProj_l = min( 0., recoilProj_l );
+  double recoilProj_t = min( sumjetProj_t, -1.0*unclProj_t ); recoilProj_t = min( 0., recoilProj_t );
+  // Case with 0 jets
+  // double recoilProj_l = -1.0*unclProj_l; recoilProj_l = min( 0., recoilProj_l );
+  // double recoilProj_t = -1.0*unclProj_t; recoilProj_t = min( 0., recoilProj_t );
 
   // Lepton uncertainty
   double relErrLead = min( leadpterr/leadpt, 1. );
