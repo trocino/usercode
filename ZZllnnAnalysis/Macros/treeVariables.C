@@ -3,13 +3,16 @@
 #include "TBranch.h"
 
 
+const UInt_t maxmc  = 50;
 const UInt_t maxln  = 50;
 const UInt_t maxjn  = 50;
 const UInt_t maxmet = 50;
 
 // Tree variables
 Int_t cat;
+Int_t mccat;
 Int_t ngenITpu;
+Int_t nvtx;
 Float_t l1_px;
 Float_t l1_py;
 Float_t l1_pz;
@@ -34,16 +37,25 @@ Float_t jn_px[maxjn];
 Float_t jn_py[maxjn];
 Float_t jn_pz[maxjn];
 Float_t jn_en[maxjn];
+Float_t jn_btag1[maxjn];
+Float_t jn_btag2[maxjn];
 Float_t htvec_px;
 Float_t htvec_py;
 Float_t met_pt[maxmet];
 Float_t met_phi[maxmet];
+Float_t mc_px[maxmc];
+Float_t mc_py[maxmc];
+Float_t mc_pz[maxmc];
+Float_t mc_en[maxmc];
+Int_t   mc_id[maxmc];
 
 // Initialize variables
 void initializeTreeVariables() {
 
   cat = 0;
+  mccat = 0;
   ngenITpu = 0;
+  nvtx = 0;
   l1_px = 0.;
   l1_py = 0.;
   l1_pz = 0.;
@@ -71,6 +83,8 @@ void initializeTreeVariables() {
     jn_py[i] = 0.;
     jn_pz[i] = 0.;
     jn_en[i] = 0.;
+    jn_btag1[i] = 0.;
+    jn_btag2[i] = 0.;
   }
   htvec_px = 0.;
   htvec_py = 0.;
@@ -78,13 +92,22 @@ void initializeTreeVariables() {
     met_pt[i] = 0.;
     met_phi[i] = 0.;
   }
+  for(unsigned int i=0; i<maxmc; ++i) {
+    mc_px[i] = 0.;
+    mc_py[i] = 0.;
+    mc_pz[i] = 0.;
+    mc_en[i] = 0.;
+    mc_id[i] = 0;
+  }
 }
 
 // Set branch addresses
 void attachToTree(TChain *t) {
 
   t->SetBranchAddress("cat", &cat);
+  t->SetBranchAddress("mccat", &mccat);
   t->SetBranchAddress("ngenITpu", &ngenITpu);
+  t->SetBranchAddress("nvtx", &nvtx);
   t->SetBranchAddress("l1_px", &l1_px);
   t->SetBranchAddress("l1_py", &l1_py);
   t->SetBranchAddress("l1_pz", &l1_pz);
@@ -109,10 +132,17 @@ void attachToTree(TChain *t) {
   t->SetBranchAddress("jn_py", &jn_py);
   t->SetBranchAddress("jn_pz", &jn_pz);
   t->SetBranchAddress("jn_en", &jn_en);
+  t->SetBranchAddress("jn_btag1", &jn_btag1);
+  t->SetBranchAddress("jn_btag2", &jn_btag2);
   t->SetBranchAddress("htvec_px", &htvec_px);
   t->SetBranchAddress("htvec_py", &htvec_py);
   t->SetBranchAddress("met_pt", &met_pt);
   t->SetBranchAddress("met_phi", &met_phi);
+  t->SetBranchAddress("mc_px", &mc_px);
+  t->SetBranchAddress("mc_py", &mc_py);
+  t->SetBranchAddress("mc_pz", &mc_pz);
+  t->SetBranchAddress("mc_en", &mc_en);
+  t->SetBranchAddress("mc_id", &mc_id);
 
 }
 

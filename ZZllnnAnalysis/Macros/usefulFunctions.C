@@ -24,18 +24,26 @@ TString allweights="";                            // Weight (MC)
 std::map<TString, TString> allweightspersample;   // Weight (one per MC sample)
 std::vector<TString> cutSet;                      // Set of all cuts (data, MC)
 std::vector<TString> cutCascade;                  // Chain of all cuts (data, MC)
-std::vector<TString> variables;                   // Variables to plot
-std::vector<TString> xtitles;                     // Variables to plot
-std::vector<TString> ytitles;                     // Variables to plot
-std::map<TString, TString> xTitles;               // Variables to plot
-std::map<TString, TString> yTitles;               // Variables to plot
+std::vector<TString> variables;                   // All variables
+std::vector<TString> allVarsToPlot;               // Variables to plot
+std::vector<TString> allVarsToPrint;              // Variables to print
+std::vector<TString> xtitles;                     // Variables to plot or print
+std::vector<TString> ytitles;                     // Variables to plot or print
+std::map<TString, TString> xTitles;               // Variables to plot or print
+std::map<TString, TString> yTitles;               // Variables to plot or print
 std::vector<TString> binnings;                    // Binning and range limits
 std::map<TString, unsigned int> binsUInt;         // Binning and range limits
 std::map<TString, double> firstBinsDouble;        // Binning and range limits
 std::map<TString, double> lastBinsDouble;         // Binning and range limits
+std::map<TString, bool> drawVar;                  // Plot this variable
+std::map<TString, bool> printVar;                 // Print this variable
 unsigned int nVars=0;
 vector<double> puWeights;                         // Vector of weights for PU
 
+enum PhysicsChannels  { SINGLETOP_CH, TTBAR_CH, W_CH, WW_CH, Z_CH, ZZ_CH, WZ_CH, SIGNAL_CH };
+enum PhysicsObjects   { MET=0,JET=1,TOP=6,ELECTRON=11, MUON=13, TAU=15, GLUON=21, PHOTON=22, Z=23, W=24};
+enum DileptonChannels { UNKNOWN=0,MUMU=1,EE=2,EMU=3,ETAU=4,MUTAU=5, GAMMA=22};
+enum IsolType         { ECAL_ISO=0, HCAL_ISO, TRACKER_ISO, REL_ISO, RELRHOCORR_ISO, N_ISO, C_ISO, CPU_ISO, G_ISO, PFREL_ISO, PFRELBETCORR_ISO};
 
 //
 // Implementation of some necessary variables
@@ -48,11 +56,18 @@ void initializeGlobalVariables() {
   cutSet.clear();
   cutCascade.clear();
   variables.clear();
+  allVarsToPlot.clear();
+  allVarsToPrint.clear();
   xtitles.clear();
   ytitles.clear();
   xTitles.clear();
   yTitles.clear();
   binnings.clear();
+  binsUInt.clear();
+  firstBinsDouble.clear();
+  lastBinsDouble.clear();
+  drawVar.clear();
+  printVar.clear();
   nVars=0;
   return;
 }
@@ -71,9 +86,11 @@ void addVariable(TString newvar, TString newxtitle, TString newytitle, TString n
   return;
 }
 
-// For new macro
-void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, double newFirstBin, double newLastBin) {
+// For new macro - all variables to plot
+void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, double newFirstBin, double newLastBin, bool drawThis = true, bool printThis = true) {
   variables.push_back(newvar);
+  if(drawThis) allVarsToPlot.push_back(newvar);
+  if(printThis) allVarsToPrint.push_back(newvar);
   xTitles[newvar] = newxtitle;
   if(newytitle.Length()>0) 
     yTitles[newvar] = newytitle;
@@ -82,10 +99,17 @@ void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned 
   binsUInt[newvar] = newBins;
   firstBinsDouble[newvar] = newFirstBin;
   lastBinsDouble[newvar] = newLastBin;
+  drawVar[newvar] = drawThis;
+  printVar[newvar] = printThis;
   nVars=variables.size();
   return;
 }
 
+// For new macro - all variables to print (USELESS)
+void addPrintVariable(TString newvar2, TString newxtitle2, TString newytitle2, unsigned int newBins2, double newFirstBin2, double newLastBin2) {
+  addVariable(newvar2, newxtitle2, newytitle2, newBins2, newFirstBin2, newLastBin2, false, true);
+  return;
+}
 
 void addCut(TString newcutname, TString newcut) {
 
@@ -201,7 +225,7 @@ double getMass(double e, double px, double py, double pz) {
 }
 
 // Get list of particles above some pt/Et
-std::vector<unsigned int> getListOfParticlesWithPt(UInt_t nPart, std::vector<Float_t> vPx, std::vector<Float_t> vPy, Float_t ptThr) {
+std::vector<UInt_t> getListOfParticlesWithPt(UInt_t nPart, Float_t *vPx, Float_t *vPy, Float_t ptThr) {
 
   std::vector<UInt_t> listParts;
 
@@ -211,6 +235,44 @@ std::vector<unsigned int> getListOfParticlesWithPt(UInt_t nPart, std::vector<Flo
   }
 
   return listParts;
+}
+
+Float_t getMaxValue(UInt_t npart, Float_t *valArr, Int_t & pickedIdx) {
+
+  pickedIdx = -1; 
+  Float_t thisVal = -999.;
+
+  for(UInt_t k=0; k<npart; ++k) {
+    if(valArr[k]>thisVal) {
+      thisVal = valArr[k];
+      pickedIdx = k;
+    }
+  }
+
+  return thisVal;
+}
+
+// 
+// Decoding particle states...
+// 
+int getGenProcess(Int_t mcChannelCode) {
+  return ((mcChannelCode>>8)&0xf);
+}
+
+int getNgenLeptons(Int_t mcChannelCode, Int_t pdgId) {
+  int shift(0);
+  if(pdgId==ELECTRON) shift=12;
+  if(pdgId==MUON)     shift=16;
+  if(pdgId==TAU)      shift=20;
+  if(pdgId==12 || pdgId==14 || pdgId==16) shift=4;
+  return ((mcChannelCode>>shift)&0xf);
+}
+
+bool isZZ2l2nu(Int_t mcChannelCode) {
+  if(getGenProcess(mcChannelCode)!=ZZ_CH) return false;
+  if(getNgenLeptons(mcChannelCode,ELECTRON)<2 && getNgenLeptons(mcChannelCode,MUON)<2 && getNgenLeptons(mcChannelCode,TAU)<2) return false;
+  if(getNgenLeptons(mcChannelCode,12)<2) return false;
+  return true;
 }
 
 // Get detector-based isolation
@@ -273,67 +335,118 @@ double csCosThetaAbs(float pt1, float eta1, float phi1, float charge1,
 
 }
 
-double dileptMetDeltaPhi(float dileptX, float dileptY, float metX, float metY) {
+// General deltaPhi
+double getDeltaPhi(float firstX, float firstY, float secondX, float secondY) {
 
-  double dileptPhi, metPhi;
+  double firstPhi, secondPhi;
 
-  // Find dilepton phi
-  if(dileptX==0) {
-    if(dileptY>0) {
-      dileptPhi=1.570796327; // pi/2, 90°
+  // Find first phi
+  if(firstX==0) {
+    if(firstY>0) {
+      firstPhi=1.570796327; // pi/2, 90°
     }
     else {
-      dileptPhi=-1.570796327; // -pi/2, -90°
+      firstPhi=-1.570796327; // -pi/2, -90°
     }
   }
   else {
-    dileptPhi = atan(dileptY/dileptX);
-    if(dileptX<0) {
-      if(dileptY>0) {
-	dileptPhi+=3.141592654;
+    firstPhi = atan(firstY/firstX);
+    if(firstX<0) {
+      if(firstY>0) {
+	firstPhi+=3.141592654;
       }
       else {
-	dileptPhi-=3.141592654;
+	firstPhi-=3.141592654;
       }
     }
   }
 
-  // Find MET phi
-  if(metX==0) {
-    if(metY>0) {
-      metPhi=1.570796327; // pi/2, 90°
+  // Find second phi
+  if(secondX==0) {
+    if(secondY>0) {
+      secondPhi=1.570796327; // pi/2, 90°
     }
     else {
-      metPhi=-1.570796327; // -pi/2, -90°
+      secondPhi=-1.570796327; // -pi/2, -90°
     }
   }
   else {
-    metPhi = atan(metY/metX);
-    if(metX<0) {
-      if(metY>0) {
-	metPhi+=3.141592654;
+    secondPhi = atan(secondY/secondX);
+    if(secondX<0) {
+      if(secondY>0) {
+	secondPhi+=3.141592654;
       }
       else {
-	metPhi-=3.141592654;
+	secondPhi-=3.141592654;
       }
     }
   }
 
-  double deltaPhi=fabs(dileptPhi-metPhi);
+  double deltaPhi=fabs(firstPhi-secondPhi);
   if(deltaPhi>3.141592654)
     deltaPhi=6.283185307-deltaPhi;
 
   return deltaPhi;
 }
 
-double myDeltaPhi(float phi1, float phi2) {
+// General deltaPhi
+double getDeltaPhi(float firstX, float firstY, float secondPhi) {
+
+  double firstPhi;
+
+  // Find first phi
+  if(firstX==0) {
+    if(firstY>0) {
+      firstPhi=1.570796327; // pi/2, 90°
+    }
+    else {
+      firstPhi=-1.570796327; // -pi/2, -90°
+    }
+  }
+  else {
+    firstPhi = atan(firstY/firstX);
+    if(firstX<0) {
+      if(firstY>0) {
+	firstPhi+=3.141592654;
+      }
+      else {
+	firstPhi-=3.141592654;
+      }
+    }
+  }
+
+  double deltaPhi=fabs(firstPhi-secondPhi);
+  if(deltaPhi>3.141592654)
+    deltaPhi=6.283185307-deltaPhi;
+
+  return deltaPhi;
+}
+
+// General deltaPhi
+double getDeltaPhi(float phi1, float phi2) {
 
   double deltaPhi=fabs(phi1-phi2);
   if(deltaPhi>3.141592654)
     deltaPhi=6.283185307-deltaPhi;
 
   return deltaPhi;
+}
 
+// Get particle closest in phi
+Float_t getParticleClosestInPhi(UInt_t npart1, Float_t *px1, Float_t *py1, Float_t phi2, Int_t & pickedIdx) {
+
+  pickedIdx = -1; 
+  Float_t thisDPhi = 4.;
+
+  for(UInt_t k=0; k<npart1; ++k) {
+    Float_t tmpDPhi = getDeltaPhi(px1[k], py1[k], phi2);
+    if(tmpDPhi<thisDPhi) {
+      thisDPhi = tmpDPhi;
+      pickedIdx = k;
+    }
+  }
+
+  return thisDPhi;
 }
 
 double getOverallNorm(int finalState) {    // inv.mass, lept.type
@@ -807,6 +920,147 @@ double getCmsRedMet(float flav,
 }
 
 
+// CMS ind. min. RedMET with CMG trees
+double getCMSRedMet(double lpx1, double lpy1, double lpterr1, 
+		    double lpx2, double lpy2, double lpterr2, 
+		    double sumjpx, double sumjpy, 
+		    double pfmet, double pfmetphi, 
+		    int flav, int pickAFlav = 1) {
+
+  if( flav==3 ) { 
+    if( pickAFlav!=1 && pickAFlav!=2 ) {
+      cout << " *** ERROR *** " << endl;
+      cout << "  You need to pick a flavor in getD0RedMet(...)! " << endl;
+      throw std::exception();
+      return -1.;
+    }
+    else {
+      flav = pickAFlav;
+    }
+  }
+
+  // double wPerpMu = 1.0;
+  // double wRecMu  = 2.0;
+  // double wUncMu  = 2.5;
+  double wPerpMu = 1.0;
+  double wRecMu  = 1.0;
+  double wUncMu  = 1.0;
+
+  // double wPerpEl = 1.5;
+  // double wRecEl  = 2.25;
+  // double wUncEl  = 0.0;
+  double wPerpEl = 1.0;
+  double wRecEl  = 1.0;
+  double wUncEl  = 1.0;
+
+  double kPerp = 1.;
+  double kRecoil_l = 1.;
+  double kRecoil_t = 1.;
+  double kSigmaPt_l = 1.;
+  double kSigmaPt_t = 1.;
+
+  if( flav==1 ) {        // mm
+    kPerp = wPerpMu;
+    kRecoil_l = kRecoil_t = wRecMu;
+    kSigmaPt_l = kSigmaPt_t = wUncMu;
+  }
+  else if( flav==2 ) {  // ee
+    kPerp = wPerpEl;
+    kRecoil_l = kRecoil_t = wRecEl;
+    kSigmaPt_l = kSigmaPt_t = wUncEl;
+  }
+  else {}
+
+  double pt1 = sqrt(lpx1*lpx1 + lpy1*lpy1);
+  double pt2 = sqrt(lpx2*lpx2 + lpy2*lpy2);
+
+  TVector2 lead, subl;
+  double leadpt, sublpt, leadpterr, sublpterr;
+  if(pt1>pt2) {
+    lead = TVector2(lpx1, lpy1);
+    subl = TVector2(lpx2, lpy2);
+    leadpt = pt1;
+    leadpterr = lpterr1;
+    sublpt = pt2;
+    sublpterr = lpterr2;
+  }
+  else {
+    lead = TVector2(lpx2, lpy2);
+    subl = TVector2(lpx1, lpy1);
+    leadpt = pt2;
+    leadpterr = lpterr2;
+    sublpt = pt1;
+    sublpterr = lpterr1;
+  }
+
+  // Define the thrust and dilepton
+  TVector2 dil = lead+subl;
+  TVector2 thr = lead-subl;
+  TVector2 longi;
+  TVector2 perpe;
+  double deltaPhi = fabs(lead.DeltaPhi(subl));
+
+  if( deltaPhi>(3.141592654/2.) ) {
+    longi = thr.Unit();
+    perpe = longi.Rotate(3.141592654/2.);
+    if(perpe*lead<0) perpe *= -1;
+  }
+  else {
+    perpe = dil.Unit();
+    longi = perpe.Rotate(3.141592654/2.);
+    if(longi*lead<0) longi *= -1;
+  }
+
+  // Dilepton
+  double dileptProj_l = dil*longi;
+  double dileptProj_t = dil*perpe;
+
+  // Unclustered
+  TVector2 uncl( pfmet*cos(pfmetphi), pfmet*sin(pfmetphi) );
+  uncl += dil;
+  double unclProj_l = uncl*longi;
+  double unclProj_t = uncl*perpe;
+
+  // Sum of jets
+  TVector2 sumjVec(sumjpx, sumjpy);
+  double sumjetProj_l = sumjVec*longi;
+  double sumjetProj_t = sumjVec*perpe;
+
+  // Recoil
+  double recoilProj_l = min( sumjetProj_l, -1.0*unclProj_l ); recoilProj_l = min( 0., recoilProj_l );
+  double recoilProj_t = min( sumjetProj_t, -1.0*unclProj_t ); recoilProj_t = min( 0., recoilProj_t );
+  // Case with 0 jets
+  // double recoilProj_l = -1.0*unclProj_l; recoilProj_l = min( 0., recoilProj_l );
+  // double recoilProj_t = -1.0*unclProj_t; recoilProj_t = min( 0., recoilProj_t );
+
+  // Lepton uncertainty
+  double relErrLead = min( leadpterr/leadpt, 1. );
+  double relErrSubl = min( sublpterr/sublpt, 1. );
+  TVector2 lowLead = lead*(1.0-relErrLead);
+  TVector2 lowSubl = subl*(1.0-relErrSubl);
+  TVector2 lowDil = lowLead + lowSubl;
+  TVector2 lowThr = lowLead - lowSubl;
+
+  double deltaDileptProj_t = lowDil*perpe - dileptProj_t;
+  double deltaDileptProj_l = ( -relErrLead*lead + relErrSubl*subl )*longi;
+
+  // D0 version
+  // double redMET_l = max( (dileptProj_l + kRecoil_l*recoilProj_l + kSigmaPt_l*deltaDileptProj_l), 0.);
+  // double redMET_t = max( (dileptProj_t + kRecoil_t*recoilProj_t + kSigmaPt_t*deltaDileptProj_t), 0.);
+  // double redMET = sqrt( pow(redMET_l,2) + kPerp*pow(redMET_t,2) );
+
+  float redMetWithJets_l = dileptProj_l + kRecoil_l*sumjetProj_l + kSigmaPt_l*deltaDileptProj_l;
+  float redMetWithMet_l  = dileptProj_l - kRecoil_l*unclProj_l   + kSigmaPt_l*deltaDileptProj_l;
+
+  float redMetWithJets_t = dileptProj_t + kRecoil_t*sumjetProj_t + kSigmaPt_t*deltaDileptProj_t;
+  float redMetWithMet_t  = dileptProj_t - kRecoil_t*unclProj_t   + kSigmaPt_t*deltaDileptProj_t;
+
+  float redMetMin_l = ( fabs(redMetWithJets_l)<fabs(redMetWithMet_l) ?  redMetWithJets_l : redMetWithMet_l );
+  float redMetMin_t = ( fabs(redMetWithJets_t)<fabs(redMetWithMet_t) ?  redMetWithJets_t : redMetWithMet_t );
+
+  return sqrt( redMetMin_l*redMetMin_l + kPerp*redMetMin_t*redMetMin_t ); 
+}
+
 void makeWeightDistribution(TH1D *mcScenario, vector<double> & dataPileupDistribution, vector<double> & result) {
 
   Int_t nbins = mcScenario->GetNbinsX();
@@ -1004,3 +1258,56 @@ double getWzInefficiency(float evttype, float flav, float run, float eta) {
 
 }
 
+
+Float_t getWzCorrection(Int_t evttype, Int_t flav3rd) {
+  // Channel mm:
+  //  - acceptance third mu = 0.728257 +- 0.0276596 (3.79805%)
+  //  - acceptance third e  = 0.808694 +- 0.0363016 (4.48892%)
+  // Channel ee:
+  //  - acceptance third mu = 0.663005 +- 0.0392423 (5.91886%)
+  //  - acceptance third e  = 0.846683 +- 0.0450845 (5.32484%)
+  //
+  // Channel mm:
+  //  - fraction of e+mu = 0.623072 +- 0.0151177 (2.42631%)
+  // Channel ee:
+  //  - fraction of e+mu = 0.62576 +- 0.0206967 (3.30745%)
+
+  Float_t acc_mm_m = 0.728257;
+  Float_t acc_mm_e = 0.808694;
+  Float_t acc_ee_m = 0.663005;
+  Float_t acc_ee_e = 0.846683;
+
+  Float_t emu_mm = 0.623072;
+  Float_t emu_ee = 0.62576;
+
+  Float_t acc  = 1.;
+  Float_t idem = 1.;
+
+  if( evttype==1 ) {              // mm
+    idem = emu_mm;
+    if( abs(flav3rd)==13 ) {       // m
+      acc = acc_mm_m;
+    }
+    else if( abs(flav3rd)==11 ) {  // e
+      acc = acc_mm_e;
+    }
+    else {}
+  }
+
+  else if( evttype==2 ) {         // ee
+    idem = emu_ee;
+    if( abs(flav3rd)==13 ) {       // m
+      acc = acc_ee_m;
+    }
+    else if( abs(flav3rd)==11 ) {  // e
+      acc = acc_ee_e;
+    }
+    else {}
+  }
+
+  else {}
+
+  Float_t corrFact = ( (1 - acc) / acc ) * ( 1 / idem ); 
+
+  return corrFact;
+}
