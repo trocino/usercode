@@ -25,6 +25,7 @@
 #include "TLine.h"
 #include "TDatime.h"
 #include <iostream>
+#include <iomanip>
 #include <map>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -300,236 +301,48 @@ void wz_dileptonMetAnalysis() {
   //    - string containing: n. bins, first bin, last bin
   //
   //           Variable             Title X                                     Y   N    x0     xN           Plot   Print
-  addVariable( "nvtx",              "Number of reconstructed vertices",         "", 34,  0.5,   34.5,        false, false );
   addVariable( "dileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "", 60,  60.,   120.,        false, false );
   addVariable( "dileptPt",          "Dilepton p_{T} [GeV/c]",                   "", 60,  0.,    120.,        false, false );
   addVariable( "jetNumber",         "PFJet number (p_{T} > 30 GeV/c)",          "", 6,   -0.5,  5.5,         false, false );
-  //addVariable( "cmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        false, false ); 
-  addVariable( "d0RedMet",          "D0 reduced MET [GeV]",                     "", 100, 0.,    300.,        false, false ); 
+  addVariable( "cmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        false, false ); 
+  //addVariable( "d0RedMet",          "D0 reduced MET [GeV]",                     "", 100, 0.,    300.,        false, false ); 
   addVariable( "metPtBalance",      "PF MET/p_{T}(Z)",                          "", 30,  0.,    3.,          false, false ); 
   addVariable( "deltaPhiJetMet",    "#Delta#phi(jet,MET) [rad]",                "", 18., 0.,    3.141592654, false, false ); 
   addVariable( "jetCsv",            "CSV discriminator (PFJet p_{T} > 20 GeV)", "", 22,  -1.1,  1.1,         false, false );
-  addVariable( "thirdMuPt",         "Third muon p_{T} [GeV/c]",                 "", 60,  0.,    60.,         false, false );
-  addVariable( "thirdEPt",          "Third electron p_{T} [GeV/c]",             "", 60,  0.,    60.,         false, false );
   //addVariable( "extraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         false, true  );
-  addVariable( "finalYield",        "Final yield",                              "", 1,   -0.,   2.,          false, true  );
 
   // WZ background
-  addVariable( "extraLeptonGenId",  "3^{rd} lepton gen. ID",              "",           7,   9.5,  16.5, true,  false );
-  addVariable( "extraMuonGenPt",    "3^{rd} muon gen. p_{T} [GeV/c]",     "",           20,  0.,   100., true,  false );
-  addVariable( "extraMuonEffPt",    "3^{rd} muon gen. p_{T} [GeV/c]",     "Efficiency", 20,  0.,   100., true,  false );
-  addVariable( "extraMuonGenEta",   "3^{rd} muon gen. #eta",              "",           24,  -6.,  6.,   true,  false );
-  addVariable( "extraMuonEffEta",   "3^{rd} muon gen. #eta",              "Efficiency", 24,  -6.,  6.,   true,  false );
-  addVariable( "extraEleGenPt",     "3^{rd} electron gen. p_{T} [GeV/c]", "",           20,  0.,   100., true,  false );
-  addVariable( "extraEleEffPt",     "3^{rd} electron gen. p_{T} [GeV/c]", "Efficiency", 20,  0.,   100., true,  false );
-  addVariable( "extraEleGenEta",    "3^{rd} electron gen. #eta",          "",           24,  -6.,  6.,   true,  false );
-  addVariable( "extraEleEffEta",    "3^{rd} electron gen. #eta",          "Efficiency", 24,  -6.,  6.,   true,  false );
+  // addVariable( "extraLeptonGenId",  "3^{rd} lepton gen. ID",              "",           7,   9.5,  16.5, false, false );
+  // addVariable( "extraMuonGenPt",    "3^{rd} muon gen. p_{T} [GeV/c]",     "",           20,  0.,   100., false, false );
+  // addVariable( "extraMuonEffPt",    "3^{rd} muon gen. p_{T} [GeV/c]",     "Efficiency", 20,  0.,   100., false, false );
+  // addVariable( "extraMuonGenEta",   "3^{rd} muon gen. #eta",              "",           24,  -6.,  6.,   false, false );
+  // addVariable( "extraMuonEffEta",   "3^{rd} muon gen. #eta",              "Efficiency", 24,  -6.,  6.,   false, false );
+  // addVariable( "extraEleGenPt",     "3^{rd} electron gen. p_{T} [GeV/c]", "",           20,  0.,   100., false, false );
+  // addVariable( "extraEleEffPt",     "3^{rd} electron gen. p_{T} [GeV/c]", "Efficiency", 20,  0.,   100., false, false );
+  // addVariable( "extraEleGenEta",    "3^{rd} electron gen. #eta",          "",           24,  -6.,  6.,   false, false );
+  // addVariable( "extraEleEffEta",    "3^{rd} electron gen. #eta",          "Efficiency", 24,  -6.,  6.,   false, false );
 
-  addVariable( "extraLeptonGenIdEM","3^{rd} lepton gen. ID e-#mu",        "",           1,   0.,   2.,   false, true  );
-  addVariable( "extraLeptonGenIdAll","3^{rd} lepton gen. ID all",         "",           1,   0.,   2.,   false, true  );
-  addVariable( "extraMuonGenAll",   "3^{rd} muon gen.",                   "",           1,   0.,   2.,   false, true  );
-  addVariable( "extraMuonGenAcc",   "3^{rd} muon gen. accept.",           "",           1,   0.,   2.,   false, true  );
-  addVariable( "extraEleGenAll",    "3^{rd} electron gen.",               "",           1,   0.,   2.,   false, true  );
-  addVariable( "extraEleGenAcc",    "3^{rd} electron gen. accept.",       "",           1,   0.,   2.,   false, true  );
-  addVariable( "extraLeptonNumber", "3^{rd} lepton number",               "",           4,   -0.5, 3.5,  true,  true  );
+  // addVariable( "extraLeptonGenIdEM","3^{rd} lepton gen. ID e-#mu",        "",           1,   0.,   2.,   false, false );
+  // addVariable( "extraLeptonGenIdAll","3^{rd} lepton gen. ID all",         "",           1,   0.,   2.,   false, false );
+  // addVariable( "extraMuonGenAll",   "3^{rd} muon gen.",                   "",           1,   0.,   2.,   false, false );
+  // addVariable( "extraMuonGenAcc",   "3^{rd} muon gen. accept.",           "",           1,   0.,   2.,   false, false );
+  // addVariable( "extraEleGenAll",    "3^{rd} electron gen.",               "",           1,   0.,   2.,   false, false );
+  // addVariable( "extraEleGenAcc",    "3^{rd} electron gen. accept.",       "",           1,   0.,   2.,   false, false );
+  addVariable( "extraLeptonNumber", "3^{rd} lepton number",               "",           4,   -0.5, 3.5,  true,  false );
+  addVariable( "extraLepton0",      "0 extra leptons",                    "",           1,   0.,   2.,   false, true  );
+  addVariable( "extraLepton1",      "1 extra lepton",                     "",           1,   0.,   2.,   false, true  );
 
-  //
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::
-  //
+  unsigned int numberCuts = allVarsToPrint.size();
 
-  //
-  // Preselection cuts 
-  //
-  //  Arguments (both TString): 
-  //   - cut name (will appear in the cut-flow table and plot
-  //   - cut expression (will be used in Draw() function)
-  // 
-  //addCut("Lepton flavor", "cat==2");  // 1: mm, 2: ee, 3: em
-  // - // - // addCut("Lepton isolation", "getDetIso(l1_trkIso,l1_ecalIso,l1_hcalIso,rho)<0.15 && getDetIso(l2_trkIso,l2_ecalIso,l2_hcalIso,rho)<0.15"); 
-  //addCut("Invariant mass", "abs(getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz)-91.1876)<15.");
-  // - // - // addCut("Invariant mass", "abs(getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz) - 91.1876) < 10."); // for overall reweighting
-  // - // - // addCut("Invariant mass", "dileptInvMass>46.1876 && dileptInvMass<136.1876"); // for non-resonant background measurement (for plots!)
-  // - // - // addCut("Invariant mass", "(dileptInvMass>46.1876 && dileptInvMass<76.1876) || (dileptInvMass>106.1876 && dileptInvMass<136.1876)"); // for non-resonant background measurement (for numbers!)
-  //addCut("Jet veto", "jn==0");
-  // - // - // addCut("Jet max pt", "jet_pt_0<30");
-  // - // - // addCut("DeltaPhi(jet, MET)", "jet_min_deltaPhiJetMET>0.5");
-  // - // - // addCut("Anti b-tagging", "jet_max_TCHE<2.0");
-  //addCut("Third lepton veto", "ln==0");
-  // - // - // addCut("Third lepton anti-veto", "numberOfLeptons>0.5");            // for WZ measurement
-  // - // - // addCut("Third lepton flavor", "abs(abs(thirdLept_flavor)-13)<0.1"); // for WZ measurement (only when 3rd lepton is a muon)
-  // - // - // addCut("ThirdLept-MET mass", "thirdLept_METleptTransvMass>0");
-  // - // - // -- Diagnostic...
-  // - // - // // addCut("Third lepton veto", "abs(LeptonVeto-1)<0.1"); //addCut("abs(thirdLept_flavor)==13");
-  // - // - // // addCut("", "abs(LeptonVeto-"+lept3_all+")>0.5");
-  // - // - // -- end Third lepton
-  // - // - // addCut("D0 Red-MET", "D0redMet>40");
-  // - // - // addCut("D0 Red-MET", d0RedMetOppositeJets+">55");
-  // - // - // addCut("D0 Red-MET", "getD0RedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumOppositeJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumOppositeJetPROJPerp, 1)>50");
-  //addCut("PF MET", "met_pt[0]>70");
-  // - // - // addCut("D0 Red-MET", d0RedMetOppositeJets_cut);
-  // - // - // addCut("CMS Red-MET", cmsRedMetOppositeJets+">70");
-  // - // - // addCut("DeltaPhi(jet, MET)", "jet_min_deltaPhiJetMET>0.5");
-  // - // - // addCut("MET-lept trans. mass.", "leadMetTransMass+subleadMetTransMass>150");
-
-  // 
-  // Weights
-  // 
-  //  Usage:
-  //   addWeight( "weight-expression", sample-label )                       // to re-weight single sample
-  //     OR
-  //   addWeight( "weight-expression", sample-labels, nunmber-of-samples )  // to re-weight groups of samples 
-  // 
-  //  Arguments: 
-  //   - "weight-expression": weight (TString)
-  //   - sample-label: label of the sample to re-weight (const char*)
-  //   - sample-labels: array of labels of the samples to re-weight (TString*)
-  //   - nunmber-of-samples: number of samples to re-weight, i.e. dimension of the array above (unsigned int)
-  // 
-  //addWeight("getPuWeights(ngenITpu)", alllabels, nSmps); // PU reweighting (N.B. the vector of PU weights will change from sample to sample)
-  //addWeight("getOverallNorm(cat)", alllabels, nSmps);    // overall normalization (from Z peak)
-
-  /*
-  // N.B. 
-  // If you pass "alllabels, nSmps" as parameters, Higgs samples will be reweighted too. 
-  // If you pass "alllabelstouse, nSmpsToUse" as parameters, Higgs samples will NOT be reweighted!
-  // In this case, need to reweight Higgs samples separately, by passing "allhiggslabelstouse, nHiggsSmpsToUse" as parameters
-  */
-
-  // 
-  // Variables to be plotted + binning and range limits (optional)
-  //
-  //   Arguments (all TString): 
-  //    - name of branch in tree
-  //    - x axis title [unit]
-  //    - y axis title; if empty: "Events/<bin+unit>" 
-  //    - string containing: n. bins, first bin, last bin
-  //
-  //addVariable("getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz)", "Dilepton invariant mass [GeV/c^{2}]", "", "60,60,120");
-  //addVariable("getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz)", "Dilepton invariant mass [GeV/c^{2}]", "", "12,75,105");
-  //addVariable("getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz)", "Dilepton invariant mass [GeV/c^{2}]", "", "1,81.1876,101.1876"); // for overall reweighting (mZ +- 10 GeV/c^2)
-  //addVariable("getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz)", "Dilepton invariant mass [GeV/c^{2}]", "", "3,46.1876,136.1876"); // for non-resonant background measurement
-  //addVariable("jn", "PFJet number (p_{T} > 15 GeV/c)", "", "6,-0.5,5.5");
-  //addVariable("ln", "Additional lepton number (loose sel.)", "", "4,-0.5,3.5");
-  //addVariable("met_pt[0]", "PF MET [GeV]", "", "100,0.,200.");
-  //addVariable("met_pt[1]", "PV-assoc. MET [GeV]", "", "100,0.,200.");
-  //addVariable("met_pt[6]", "PV-assoc. + fwd MET [GeV]", "", "100,0.,200.");
-  //addVariable("met_pt[12]", "PV-assoc. + fwd MET + #beta corr. [GeV]", "", "100,0.,200.");
-  //addVariable("getD0RedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt, met_phi, cat)", "D0 Reduced MET [GeV]", "", "100,0,100"); 
-  //addVariable("getD0RedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, met_pt, met_phi, cat)", "D0 Reduced MET [GeV]", "", "100,0,400"); // ONLY FOR EVENTS WITH NO JETS (FOR NOW!)
-
-  //addVariable("nvtx", "Number of good reconstructed vertices", "", "50, 0.5, 50.5");
-
-  //addVariable("patMet", "PF MET [geV]", "", "100,0.,400.");
-  //addVariable("getD0RedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumOppositeJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumOppositeJetPROJPerp)", 
-  //  	      "D0 Reduced MET [GeV]", "", "100,0.,400.");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumAllJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumAllJetPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "100,0.,400.");
-
-  /// RedMET components
-  //addVariable("dilepPROJLong", "Dilepton longitudinal p_{T} [GeV/c]", "", "40,0.,200.");
-  //addVariable("dilepPROJPerp", "Dilepton perpendicular p_{T} [GeV/c]", "", "60,0.,300.");
-  //addVariable("uncertPROJLong", "Lepton uncert. corr. longitudinal [GeV/c]", "", "50,-50.,0.");
-  //addVariable("uncertPROJPerp", "Lepton uncert. corr. perpendicular [GeV/c]", "", "40,-2.,2.");
-  //addVariable("sumOppositeJetPROJLong", "Sum of opposite jets longitudinal p_{T} [GeV/c]", "", "51,-250.,5.");
-  //addVariable("sumOppositeJetPROJPerp", "Sum of opposite jets perpendicular p_{T} [GeV/c]", "", "61,-300.,5.");
-  //addVariable("sumAllJetPROJLong", "Sum of jets longitudinal p_{T} [GeV/c]", "", "40,-250.,150.");
-  //addVariable("sumAllJetPROJPerp", "Sum of jets perpendicular p_{T} [GeV/c]", "", "40,-250.,150.");
-  //addVariable("METPROJLong", "Longitudinal pfMET [GeV/c]", "", "50,-150.,100.");
-  //addVariable("METPROJPerp", "Perpendicular pfMET [GeV/c]", "", "60,-200.,100.");
-  //addVariable("unclPROJLong", "Longitudinal pfMET+dilepton [GeV]", "", "30,-100.,200.");
-  //addVariable("unclPROJPerp", "Perpendicular pfMET+dilepton [GeV]", "", "50,-100.,400.");
-  //addVariable("unclPROJLong+sumOppositeJetPROJLong", "Longitudinal pfMET+dilepton+opp.jets [GeV]", "", "30,-100.,200.");
-  //addVariable("unclPROJPerp+sumOppositeJetPROJPerp", "Perpendicular pfMET+dilepton+opp.jets [GeV]", "", "50,-100.,400.");
-  //addVariable("unclPROJLong+sumAllJetPROJLong", "Longitudinal unclustered energy [GeV]", "", "30,-100.,200.");
-  //addVariable("unclPROJPerp+sumAllJetPROJPerp", "Perpendicular unclustered energy [GeV]", "", "50,-100.,400.");
-  //addVariable("recoilOppositeJetPROJLong", "Longitudinal recoil (opp.jets) [GeV]", "", "41,-200.,5.");
-  //addVariable("recoilOppositeJetPROJPerp", "Perpendicular recoil (opp.jets) [GeV]", "", "41,-400.,10.");
-  //addVariable("recoilAllJetPROJLong", "Longitudinal recoil [GeV]", "", "41,-200.,5.");
-  //addVariable("recoilAllJetPROJPerp", "Perpendicular recoil [GeV]", "", "41,-400.,10.");
-
-  //addVariable("getD0RedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumOppositeJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumOppositeJetPROJPerp)", 
-  //  	      "D0 Reduced MET [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumAllJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumAllJetPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumOppositeJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumOppositeJetPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, sumOppositeJetPROJLong, sumOppositeJetPROJLong, dilepPROJPerp, uncertPROJPerp, sumOppositeJetPROJPerp, sumOppositeJetPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, unclPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, unclPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, sumAllJetPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, sumAllJetPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, sumAllJetPROJLong, sumAllJetPROJLong, dilepPROJPerp, uncertPROJPerp, sumAllJetPROJPerp, sumAllJetPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("getCmsRedMet(Flavor, dilepPROJLong, uncertPROJLong, unclPROJLong, unclPROJLong, dilepPROJPerp, uncertPROJPerp, unclPROJPerp, unclPROJPerp)", 
-  //  	      "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-
-  // addVariable(d0RedMetOppositeJets, "D0 Reduced MET [GeV]", "", "50,0,150");
-  //addVariable("jet_min_deltaPhiJetMET", "#Delta#phi(jet,MET) [rad]", "", "6,0,3.141592654");
-  // addVariable("leadMetTransMass+subleadMetTransMass", "M_{T}(MET,l_{1}) + M_{T}(MET,l_{2}) [GeV/c^{2}]", "", "40,0,400");
-  // addVariable("myDeltaPhi(leadPhi, patMetPhi)", "#Delta#phi(l_{1},MET) [rad]", "", "16,0,3.141592654");
-  // addVariable("myDeltaPhi(subleadPhi, patMetPhi)", "#Delta#phi(l_{2},MET) [rad]", "", "16,0,3.141592654");
-  //addVariable("myDeltaPhi(dileptPhi, patMetPhi)", "#Delta#phi(dilepton,MET) [rad]", "", "8,0.,3.141592654");
-  //addVariable("myDeltaPhi(subleadPhi, patMetPhi):myDeltaPhi(leadPhi, patMetPhi)", "#Delta#phi(l_{1},MET) [rad]", "#Delta#phi(l_{1},MET) [rad]", "32,0,3.141592654,32,0,3.141592654");
-  //addVariable("csCosThetaAbs(leadPt, leadEta, leadPhi, leadCharge, subleadPt, subleadEta, subleadPhi)", 
-  //	      "cos^{2}#theta_{CS}", "", "8,0,1");
-  //addVariable("dileptMetDeltaPhi(dilepPROJLong, dilepPROJPerp, METPROJLong, METPROJPerp)", "#Delta#phi(dilepton,MET)", "rad", "16,0,3.141592654");
-
-  //addVariable("patMetPhi", "PF MET #phi [rad]", "", "16,2.,3.141592654");
-
-  //addVariable("dileptPt", "Dilepton p_{T} [GeV/c]", "", "40,0.,400.");
-  // addVariable("dileptMetTransMass", "Dilepton-MET transv. mass [GeV/c^{2}]", "", "50,0.,500.");
-  // addVariable("dileptMetTransMassZ", "Dilepton-MET transv. mass [GeV/c^{2}]", "", "50,0.,500.");
-  // addVariable("dileptMetTransMassZZ", "Dilepton-MET transv. mass [GeV/c^{2}]", "", "50,0.,500.");
-  // addVariable("myDeltaPhi(leadPhi, subleadPhi)", "#Delta#phi(l_{1},l_{2} [rad]", "", "24,-3.141592654,3.141592654");
-
-
-  //addVariable("dileptInvMass", "Dilepton invariant mass [GeV/c^{2}]", "", "15,76,106");
-  //addVariable("leadMetTransMass+subleadMetTransMass", "M_{T}(MET,l_{1}) + M_{T}(MET,l_{2}) [GeV/c^{2}]", "", "25,100,350");
-  // addVariable("abs(abs(leadPhi-subleadPhi)-(6.283185307*(abs(leadPhi-subleadPhi)>3.141592654)))", "#Delta#phi(l_{1},l_{2}) [rad]", "", "24,6-6,6");//"24,0,3.141592654");
-  // addVariable("dileptLeadDeltaPhi", "#Delta#phi(dilept,l_{1}) [rad]", "", "12,0,1.2");
-  // addVariable("leptMinusCmCosTheta", "cos#theta_{CM}(l^{-})", "", "12,-1,1");
-
-  //addVariable("dileptMetTransMass", "Dilepton-MET transverse mass [GeV/c^{2}]", "", "");
-  //addVariable("dileptMetTransMassZ", "Dilepton-MET transverse mass [GeV/c^{2}]", "", "");
-  //addVariable("dileptMetTransMassZZ", "Dilepton-MET transverse mass [GeV/c^{2}]", "", "");
-  //addVariable("jet_max_JBP", "max b-tag discriminator JBP", "", "");
-  //addVariable("jet_max_SSVHE", "max b-tag discriminator SSVHE", "", "");
-
-  //  - binning format: xbin, xmin, xmax, (ybin, ymin, ymax, (zbin, zmin, zmax))
-  //addVariable("dileptInvMass", "Dilepton invariant mass [GeV/c^{2}]", "", "60,60,120");
-  //addVariable(cmsRedMetAllJets, "CMS Ind. min. red. MET (all jets) [GeV]", "", "50,0,150");
-  //addVariable("jet_min_deltaPhiJetMET", "36,0,3.141592654");
-  //addVariable("jet_max_TCHE", "50,-2,8");
-  //addVariable("jet_pt_0", "First PF Jet p_{T} [GeV/c]", "", "35,15,85");
-  //addVariable("jet_pt_1", "50,15,115");
-  //addVariable("jet_pt_2", "50,15,115");
-  //addVariable("thirdLept_flavor");
-  //addVariable("thirdLept_pixHits");
-  //addVariable("thirdLept_trkHits");
-  //addVariable("thirdLept_isGlobalMuonPT");
-  //addVariable("thirdLept_isTrackerMuon");
-  //addVariable("thirdLept_muMatches");
-  //addVariable("thirdLept_trkChi2");
-  //addVariable("thirdLept_pt");
-  //addVariable("thirdLept_corrRelIso");
-  //addVariable("thirdLept_METleptTransvMass", "3^{rd} lept-MET transverse mass [GeV/c^{2}]", "", "60, 0, 180");
-
-  //addVariable(d0RedMetAllJets, "100,0,200");
-  //addVariable(d0RedMetOppositeJets, "100,0,200");
-  //addVariable(cmsRedMet, "100,0,200");
-  //addVariable(cmsRedMetAllJets, "100,0,200");
-  //addVariable(cmsRedMetOppositeJets, "100,0,200");
-  //addVariable("CMSredMet", "100,0,200");
-  //addVariable("totalNVertex", "Number of reconstructed vertices", "", "35, 0.5, 35.5");
-  //addVariable("goodNVertex", "Number of good reconstructed vertices", "", "35, 0.5, 35.5");
+  // One extra plots: the cut-flow
+  addVariable( "cutFlow", "", "Events", numberCuts, 0., float(numberCuts), true, false );
 
   //
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::
+  //
+
   //
   // Drawing options
   //  0: 1D, no stack;  1: 1D, stack;  2: 2D, scatter
@@ -597,59 +410,11 @@ void wz_dileptonMetAnalysis() {
     //std::map<TString, TH1F*> allpoisdiffhistos;
     std::map<TString, TH1F*> allfracdiffhistos;
 
-    // if(binnings[i].Length()==0) {
-    // 	cout << " *** New rule: you MUST select a binning!!! ***" << endl;
-    // 	throw std::exception();
-    // 	return;
-    // }
-    // TString thisbins=binnings[i]( binnings[i].Index("(")+1, binnings[i].Index(")")-binnings[i].Index("(")-1);
-    // TObjArray *bintok=thisbins.Tokenize(","); bintok->SetOwner(kTRUE);
-    // TString binsStr=((TObjString*)(*bintok)[0])->GetString(); 
-    // TString lowBinStr=((TObjString*)(*bintok)[1])->GetString(); 
-    // TString highBinStr=((TObjString*)(*bintok)[2])->GetString(); 
-    // int bins=binsStr.Atoi();
-    // double lowBin=lowBinStr.Atof();
-    // double highBin=highBinStr.Atof();
-
-    // // Some manipulation of the string, to avoid symbols in the names of canvases/stacks/etc. 
-    // TString varlab=variables[i];
-    // varlab.ReplaceAll(" ", ""); 
-    // varlab.ReplaceAll("[", "_"); varlab.ReplaceAll("]", "_"); 
-    // varlab.ReplaceAll("(", "_"); varlab.ReplaceAll(")", "_"); 
-    // varlab.ReplaceAll("<", "LT"); varlab.ReplaceAll(">", "GT"); 
-    // varlab.ReplaceAll("+", "_P_"); varlab.ReplaceAll("-", "_M_"); 
-    // varlab.ReplaceAll("*", "_T_"); varlab.ReplaceAll("/", "_O_"); 
-    // varlab.ReplaceAll(",", "_V_"); 
-    /*
-    allstacks.push_back(new THStack( ("stack_"+varlab).Data(), ("stack_"+varlab).Data() ));
-    allcanvas.push_back(new TCanvas( ("canvas_"+varlab).Data(), ("canvas_"+varlab).Data(), canvx, canvy ));
-    if(binbybinComp && drawData) {
-	allcanvas.back()->cd();
-	allpads1.push_back(new TPad( ("pad1_"+varlab).Data(), ("pad1_"+varlab).Data(), 0., 1.-canvx/canvy, 1., 1. ));
-	//allpads2.push_back(new TPad( ("pad2_"+varlab).Data(), ("pad2_"+varlab).Data(), 0., (1.-canvx/canvy)/2., 1., 1.-canvx/canvy ));
-	allpads3.push_back(new TPad( ("pad3_"+varlab).Data(), ("pad3_"+varlab).Data(), 0., 0., 1., 1.-canvx/canvy ));
-	allpads1.back()->Draw();
-	//allpads2.back()->Draw();
-	allpads3.back()->Draw();
-    }
-    else {
-	allcanvas.back()->cd();
-	allpads1.push_back(new TPad( ("pad1_"+varlab).Data(), ("pad1_"+varlab).Data(), 0., 0., 1., 1. ));
-	allpads1.back()->Draw();
-    }
-    alllegends.push_back(new TLegend(0.76, 0.64, 0.98, 0.94));
-    alllegends.back()->SetFillColor(0);
-    alllegends.back()->SetFillStyle(0);
-    alllegends.back()->SetBorderSize(0);
-    alllegends.back()->SetLineColor(0);
-    allhistos.push_back(std::vector<TH1F*>());
-    THStack *stk=allstacks.back();
-    */
-
     // 
     // All histos and other stuff
     // 
     for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
+
       for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
 	TString plotIdx = finStat->second+"_"+(*varsToPlot);
 	allstacks[plotIdx] = new THStack( ("stack_"+plotIdx).Data(), ("stack_"+plotIdx).Data() ); 
@@ -702,22 +467,18 @@ void wz_dileptonMetAnalysis() {
 	if(addThisPlot) {
 	  for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
 	    for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
-	      // TString plotIdx = (*varsToPlot)+"_"+finStat->second;
-	      // allhistos[plotIdx].push_back( new TH1F( (plotname+plotIdx).Data(), (plotname+plotIdx).Data(), 
-	      // 					      binsUInt[*varsToPlot], firstBinsDouble[*varsToPlot], lastBinsDouble[*varsToPlot] ) );
-	      // allhistos[plotIdx].back()->Sumw2();
 	      TString plotIdx = plotname+finStat->second+"_"+(*varsToPlot);
 	      allhistos[plotIdx] = new TH1F( plotIdx.Data(), plotIdx.Data(), binsUInt[*varsToPlot], 
 					     firstBinsDouble[*varsToPlot], lastBinsDouble[*varsToPlot] );
 	      allhistos[plotIdx]->Sumw2();
 	      j_ah += 1;
 	    }
+	    // Only for cut-flow plot
+	    for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
+	      allhistos[plotname+finStat->second+"_cutFlow"]->GetXaxis()->SetBinLabel(h+1, allVarsToPrint[h]);
+	    }
 	  }
 	}
-
-	// alltrees[alllabelstouse[j]]->Draw( (variables[i]+">>"+sumplot+plotname).Data(),
-	// 				   ("("+generalWeight+")*("+allweightspersample[alllabelstouse[j]]+")*("+allcuts+")").Data(),
-	// 				   dopt.Data() );
 
 	unsigned int nEvt = alltrees[alllabelstouse[j]]->GetEntries();
 	std::cout << " - " << alllabelstouse[j].Data() << "  " << nEvt << std::endl;
@@ -755,9 +516,6 @@ void wz_dileptonMetAnalysis() {
 	    float evtWeight = genWeight * getPuWeights(ngenITpu);
 
 	    fillPlots(allhistos, plotIdx, evtWeight);
-
-	    // float invmass = getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz);
-	    // allhistos["mass"].back()->Fill(invmass, evtWeight);
 	  }
 	}
 	// 
@@ -813,8 +571,6 @@ void wz_dileptonMetAnalysis() {
     // 
     // Loop over Higgs samples
     //
-    //allhiggshistos["mass"] = std::vector<TH1F*>();
-
     for(unsigned int j=0; j<nHiggsSmpsToUse; ++j) {
 	TString plotname = "h_"+allhiggslabelstouse[j]+"_";
 
@@ -827,6 +583,10 @@ void wz_dileptonMetAnalysis() {
 	    allhiggshistos[plotIdx] = new TH1F( plotIdx.Data(), plotIdx.Data(), binsUInt[*varsToPlot], 
 						firstBinsDouble[*varsToPlot], lastBinsDouble[*varsToPlot] );
 	    allhiggshistos[plotIdx]->Sumw2();
+	  }
+	  // Only for cut-flow plot
+	  for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
+	    allhiggshistos[plotname+finStat->second+"_cutFlow"]->GetXaxis()->SetBinLabel(h+1, allVarsToPrint[h]);
 	  }
 	}
 
@@ -852,9 +612,6 @@ void wz_dileptonMetAnalysis() {
 	    float evtWeight = genWeight * getPuWeights(ngenITpu);
 
 	    fillPlots(allhiggshistos, plotIdx, evtWeight);
-
-	    // float invmass = getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz);
-	    // allhistos["mass"].back()->Fill(invmass, evtWeight);
 	  }
 	}
 
@@ -886,54 +643,44 @@ void wz_dileptonMetAnalysis() {
     // Data plots
     //
     if(drawData) {
-      //allpads1[i]->cd();
-        //alldatahistos["mass"] = new TH1F( "h_data_mass", "h_data_mass", 60, 60., 120.);
-
-	for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
-	  for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
-	    TString plotIdx = "h_data_"+finStat->second+"_"+(*varsToPlot);
-	    alldatahistos[plotIdx] = new TH1F( plotIdx.Data(), plotIdx.Data(), binsUInt[*varsToPlot], 
-					       firstBinsDouble[*varsToPlot], lastBinsDouble[*varsToPlot] );
-	  }
+      for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
+	for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
+	  TString plotIdx = "h_data_"+finStat->second+"_"+(*varsToPlot);
+	  alldatahistos[plotIdx] = new TH1F( plotIdx.Data(), plotIdx.Data(), binsUInt[*varsToPlot], 
+					     firstBinsDouble[*varsToPlot], lastBinsDouble[*varsToPlot] );
 	}
-
-	// THIS IS THE STANDARD, UNCOMMENT IT!!!
-	// t_data->Draw( (variables[i]+">>h_data_"+varlab).Data(),
-	// 	      allcuts.Data(),
-	// 	      "pesame" );
-	// THIS IS ONLY FOR THIRD-LEPTON-REWEIGHTING FOR WZ MEASUREMENT!!!
-	//std::cout << "WATCH OUT!!! You're using the third-lepton-reweighting for WZ measurement!!!" << std::endl;
-	//t_data->Draw( (variables[i]+">>h_data_"+varlab).Data(),
-	//	      ("(getWzInefficiency(Flavor, thirdLept_flavor, run, thirdLept_eta))*("+allcuts+")").Data(),
-	//	      "pesame" );
-	// alldatahistos.push_back( (TH1F*)gDirectory->Get( ("h_data_"+varlab).Data() ) );
-
-	initializeTreeVariables();
-	attachToTree(t_data);
-
-	unsigned int nEvt = t_data->GetEntries();
-	std::cout << " - data " << nEvt << std::endl;
-
-	// 
-	// Loop over events
-	// 
-	for(unsigned int iEvt=0; iEvt<nEvt; ++iEvt) {
-	  t_data->GetEntry(iEvt);
-
-	  if( finalStates.count(cat)>0 ) {
-	    TString plotIdx = "h_data_"+finalStates[cat]+"_";
-	    fillPlots(alldatahistos, plotIdx, 1.0);
-	  }
+	// Only for cut-flow plot
+	for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
+	  alldatahistos["h_data_"+finStat->second+"_cutFlow"]->GetXaxis()->SetBinLabel(h+1, allVarsToPrint[h]);
 	}
+      }
 
-	for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
-	  for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
-	    TString fsAndVar = finStat->second+"_"+(*varsToPlot);
-	    TString plotIdx = "h_data_"+fsAndVar;
-	    alldatahistos[plotIdx]->SetMarkerStyle(20);
-	    alllegends[fsAndVar]->AddEntry(alldatahistos[plotIdx], "data", legopt.Data());
-	  }
+      initializeTreeVariables();
+      attachToTree(t_data);
+
+      unsigned int nEvt = t_data->GetEntries();
+      std::cout << " - data " << nEvt << std::endl;
+
+      // 
+      // Loop over events
+      // 
+      for(unsigned int iEvt=0; iEvt<nEvt; ++iEvt) {
+	t_data->GetEntry(iEvt);
+
+	if( finalStates.count(cat)>0 ) {
+	  TString plotIdx = "h_data_"+finalStates[cat]+"_";
+	  fillPlots(alldatahistos, plotIdx, 1.0);
 	}
+      }
+
+      for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
+	for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
+	  TString fsAndVar = finStat->second+"_"+(*varsToPlot);
+	  TString plotIdx = "h_data_"+fsAndVar;
+	  alldatahistos[plotIdx]->SetMarkerStyle(20);
+	  alllegends[fsAndVar]->AddEntry(alldatahistos[plotIdx], "data", legopt.Data());
+	}
+      }
     }
     // 
     // End data plot
@@ -943,15 +690,15 @@ void wz_dileptonMetAnalysis() {
     // Final Draw
     // 
 
-    // Only for WZ background
-    allhistos["h_wz_mm_extraMuonEffPt"]->Divide(  allhistos["h_wz_mm_extraMuonGenPt"] ); 
-    allhistos["h_wz_mm_extraMuonEffEta"]->Divide( allhistos["h_wz_mm_extraMuonGenEta"] ); 
-    allhistos["h_wz_ee_extraMuonEffPt"]->Divide(  allhistos["h_wz_ee_extraMuonGenPt"] ); 
-    allhistos["h_wz_ee_extraMuonEffEta"]->Divide( allhistos["h_wz_ee_extraMuonGenEta"] ); 
-    allhistos["h_wz_mm_extraEleEffPt"]->Divide(  allhistos["h_wz_mm_extraEleGenPt"] ); 
-    allhistos["h_wz_mm_extraEleEffEta"]->Divide( allhistos["h_wz_mm_extraEleGenEta"] ); 
-    allhistos["h_wz_ee_extraEleEffPt"]->Divide(  allhistos["h_wz_ee_extraEleGenPt"] ); 
-    allhistos["h_wz_ee_extraEleEffEta"]->Divide( allhistos["h_wz_ee_extraEleGenEta"] ); 
+    // // Only for WZ background
+    // allhistos["h_wz_mm_extraMuonEffPt"]->Divide(  allhistos["h_wz_mm_extraMuonGenPt"] ); 
+    // allhistos["h_wz_mm_extraMuonEffEta"]->Divide( allhistos["h_wz_mm_extraMuonGenEta"] ); 
+    // allhistos["h_wz_ee_extraMuonEffPt"]->Divide(  allhistos["h_wz_ee_extraMuonGenPt"] ); 
+    // allhistos["h_wz_ee_extraMuonEffEta"]->Divide( allhistos["h_wz_ee_extraMuonGenEta"] ); 
+    // allhistos["h_wz_mm_extraEleEffPt"]->Divide(  allhistos["h_wz_mm_extraEleGenPt"] ); 
+    // allhistos["h_wz_mm_extraEleEffEta"]->Divide( allhistos["h_wz_mm_extraEleGenEta"] ); 
+    // allhistos["h_wz_ee_extraEleEffPt"]->Divide(  allhistos["h_wz_ee_extraEleGenPt"] ); 
+    // allhistos["h_wz_ee_extraEleEffEta"]->Divide( allhistos["h_wz_ee_extraEleGenEta"] ); 
 
     // N.B. only "allVarsToPlot" is used, not all "variables"!!!
     // 
@@ -1030,42 +777,7 @@ void wz_dileptonMetAnalysis() {
 	  allmchistos["h_sumAllMc_"+fsAndVar]->GetYaxis()->SetTitleOffset(1.3);
 	}
 
-    /*
-    // Axis, labels & Co.
-    if(ytitles[i].EndsWith("Events/")) {
-	int xbin=allmchistos[i]->GetXaxis()->GetNbins();
-	double xmin=allmchistos[i]->GetXaxis()->GetXmin();
-	double xmax=allmchistos[i]->GetXaxis()->GetXmax();
-	double onebin=(xmax-xmin)/xbin;
-	ytitles[i]+=onebin;
-	TString unit=xtitles[i]( xtitles[i].Index("[")+1, ( xtitles[i].Index("]")-xtitles[i].Index("[")-1 ) );
-	if(unit.Length()>0) {
-	  unit.Prepend(" ");
-	  ytitles[i]+=unit;
-	}
-	if(ytitles[i].EndsWith("/1")) ytitles[i].ReplaceAll("/1","");
-    }
-    if(drawOnlyCumulative==false) {
-	stk->GetXaxis()->SetTitle(xtitles[i].Data());
-	stk->GetXaxis()->SetTitleSize(0.05);
-	stk->GetXaxis()->SetLabelSize(0.04);
-	stk->GetYaxis()->SetTitle(ytitles[i].Data());
-	stk->GetYaxis()->SetTitleSize(0.05);
-	stk->GetYaxis()->SetLabelSize(0.04);
-	stk->GetYaxis()->SetTitleOffset(1.3);
-    }
-    else {
-	allmchistos[i]->GetXaxis()->SetTitle(xtitles[i].Data());
-	allmchistos[i]->GetXaxis()->SetTitleSize(0.05);
-	allmchistos[i]->GetXaxis()->SetLabelSize(0.04);
-	allmchistos[i]->GetYaxis()->SetTitle(ytitles[i].Data());
-	allmchistos[i]->GetYaxis()->SetTitleSize(0.05);
-	allmchistos[i]->GetYaxis()->SetLabelSize(0.04);
-	allmchistos[i]->GetYaxis()->SetTitleOffset(1.3);
-    }
-    */
-
-    // "Bin-by-bin" data-MC comparison
+	// "Bin-by-bin" data-MC comparison
 	if(binbybinComp && drawData) {	// Start bin-by-bin data-MC comparison
 
 	  double normdt = alldatahistos["h_data_"+fsAndVar]->Integral(0, -1);
@@ -1119,15 +831,12 @@ void wz_dileptonMetAnalysis() {
 
 		//std::cout << alldatahistos["h_data_"+fsAndVar]->GetBinCenter(ibin) << ", " << (ndt/normdt)/(nmc/normmc) << std::endl;
 		//std::cout << alldatahistos["h_data_"+fsAndVar]->GetBinCenter(ibin) << ", " << (ndt)/(nmc) << std::endl;
-
 	      }
-
 	    }
 
 	    // allpoisdiffhistos[fsAndVar]->SetBinContent(ibin, chi2bin);
 	    allfracdiffhistos[fsAndVar]->SetBinContent(ibin, fracbin);
 	    allfracdiffhistos[fsAndVar]->SetBinError(ibin, err_fracbin);
-
 	  } // end for(int ibin=0; ibin<=nbins+1; ++ibin)
 
 	  TLine *ll=new TLine(firstBinsDouble[*varsToPlot], 0., lastBinsDouble[*varsToPlot], 0.);
@@ -1170,12 +879,7 @@ void wz_dileptonMetAnalysis() {
     // 
     // Print out result of WZ measurement
     // 
-    // double var_wz_mm_finalYield(0.), err_wz_mm_finalYield(0.); 
-    // double var_wz_ee_finalYield(0.), err_wz_ee_finalYield(0.); 
-
-    // var_wz_mm_finalYield = allhistos["h_wz_mm_finalYield"]->IntegralAndError(0, -1, err_wz_mm_finalYield);
-    // var_wz_ee_finalYield = allhistos["h_wz_ee_finalYield"]->IntegralAndError(0, -1, err_wz_ee_finalYield);
-
+    /*
     double var_wz_mm_m_all(0.), err_wz_mm_m_all(0.), var_wz_mm_m_pss(0.), err_wz_mm_m_pss(0.), var_wz_mm_m_acc(0.), err_wz_mm_m_acc(0.); 
     double var_wz_mm_e_all(0.), err_wz_mm_e_all(0.), var_wz_mm_e_pss(0.), err_wz_mm_e_pss(0.), var_wz_mm_e_acc(0.), err_wz_mm_e_acc(0.); 
     double var_wz_ee_m_all(0.), err_wz_ee_m_all(0.), var_wz_ee_m_pss(0.), err_wz_ee_m_pss(0.), var_wz_ee_m_acc(0.), err_wz_ee_m_acc(0.); 
@@ -1234,6 +938,81 @@ void wz_dileptonMetAnalysis() {
     std::cout << "Channel ee:" << std::endl;
     std::cout << " - fraction of e+mu = ";
     std::cout <<  var_wz_ee_idemu << " +- " << err_wz_ee_idemu << " (" << err_wz_ee_idemu/var_wz_ee_idemu*100 << "%)" << std::endl;
+    */
+
+
+    std::cout << "MC:" << std::endl;
+    // --- MM ---
+    std::cout << " - Channel mm:" << std::endl;
+    double wz_mm_bin0 = allhistos["h_wz_mm_extraLeptonNumber"]->GetBinContent(1);
+    double err_wz_mm_bin0 = allhistos["h_wz_mm_extraLeptonNumber"]->GetBinError(1);
+    double wz_mm_bin1 = allhistos["h_wz_mm_extraLeptonNumber"]->GetBinContent(2);
+    double err_wz_mm_bin1 = allhistos["h_wz_mm_extraLeptonNumber"]->GetBinError(2);
+
+    std::cout << " 0 lept.: " << wz_mm_bin0 << " +- "  << err_wz_mm_bin0 << std::endl;
+    std::cout << " 1 lept.: " << wz_mm_bin1 << " +- "  << err_wz_mm_bin1 << std::endl;
+    std::cout << std::endl;
+    double wz_mm_sf = wz_mm_bin0/wz_mm_bin1;
+    double relerr_wz_mm_sf = sqrt( pow(err_wz_mm_bin0/wz_mm_bin0, 2) + pow(err_wz_mm_bin1/wz_mm_bin1, 2) );
+    double err_wz_mm_sf = wz_mm_sf * relerr_wz_mm_sf; 
+
+    std::cout << " scale factor = (0 lept.)/(1 lept.) = " << wz_mm_sf << " +- "  
+	      << err_wz_mm_sf << " (" << relerr_wz_mm_sf*100 << "%)" << std::endl;
+    std::cout << std::endl;
+
+    // --- EE ---
+    std::cout << std::endl;
+    std::cout << "Channel ee:" << std::endl;
+    double wz_ee_bin0 = allhistos["h_wz_ee_extraLeptonNumber"]->GetBinContent(1);
+    double err_wz_ee_bin0 = allhistos["h_wz_ee_extraLeptonNumber"]->GetBinError(1);
+    double wz_ee_bin1 = allhistos["h_wz_ee_extraLeptonNumber"]->GetBinContent(2);
+    double err_wz_ee_bin1 = allhistos["h_wz_ee_extraLeptonNumber"]->GetBinError(2);
+
+    std::cout << " 0 lept.: " << wz_ee_bin0 << " +- "  << err_wz_ee_bin0 << std::endl;
+    std::cout << " 1 lept.: " << wz_ee_bin1 << " +- "  << err_wz_ee_bin1 << std::endl;
+    std::cout << std::endl;
+    double wz_ee_sf = wz_ee_bin0/wz_ee_bin1;
+    double relerr_wz_ee_sf = sqrt( pow(err_wz_ee_bin0/wz_ee_bin0, 2) + pow(err_wz_ee_bin1/wz_ee_bin1, 2) );
+    double err_wz_ee_sf = wz_ee_sf * relerr_wz_ee_sf; 
+
+    std::cout << " scale factor = (0 lept.)/(1 lept.) = " << wz_ee_sf << " +- "  
+	      << err_wz_ee_sf << " (" << relerr_wz_ee_sf*100 << "%)" << std::endl;
+    std::cout << std::endl;
+
+
+    std::cout << std::endl;
+    std::cout << "Data:" << std::endl;
+    // --- MM ---
+    std::cout << " - Channel mm:" << std::endl;
+    double dt_mm_bin1 = alldatahistos["h_data_mm_extraLeptonNumber"]->GetBinContent(2);
+    double err_dt_mm_bin1 = alldatahistos["h_data_mm_extraLeptonNumber"]->GetBinError(2);
+
+    std::cout << " 1 lept.: " << dt_mm_bin1 << " +- "  << err_dt_mm_bin1 << std::endl;
+
+    double dt_mm_bin0 = dt_mm_bin1 * wz_mm_sf;
+    double err_dt_mm_bin0 = err_dt_mm_bin1 * wz_mm_sf;
+    double syserr_dt_mm_bin0 = dt_mm_bin0 * relerr_wz_mm_sf;
+
+    std::cout << " Expexted mm data in 0 lept. bin: " << std::endl;
+    std::cout << "  " << dt_mm_bin0 << " +- " << err_dt_mm_bin0 << " (stat) +- "
+	      << syserr_dt_mm_bin0 << " (syst)" << std::endl;
+
+    // --- EE ---
+    std::cout << std::endl;
+    std::cout << " - Channel ee:" << std::endl;
+    double dt_ee_bin1 = alldatahistos["h_data_ee_extraLeptonNumber"]->GetBinContent(2);
+    double err_dt_ee_bin1 = alldatahistos["h_data_ee_extraLeptonNumber"]->GetBinError(2);
+
+    std::cout << " 1 lept.: " << dt_ee_bin1 << " +- "  << err_dt_ee_bin1 << std::endl;
+
+    double dt_ee_bin0 = dt_ee_bin1 * wz_ee_sf;
+    double err_dt_ee_bin0 = err_dt_ee_bin1 * wz_ee_sf;
+    double syserr_dt_ee_bin0 = dt_ee_bin0 * relerr_wz_ee_sf;
+
+    std::cout << " Expexted mm data in 0 lept. bin: " << std::endl;
+    std::cout << "  " << dt_ee_bin0 << " +- " << err_dt_ee_bin0 << " (stat) +- "
+	      << syserr_dt_ee_bin0 << " (syst)" << std::endl;
+
 
   } // end if(doPlot)
 
@@ -1242,7 +1021,6 @@ void wz_dileptonMetAnalysis() {
   // -- // -- // -- // -- // -- // -- // -- // -- // -- // -- // -- // 
 
   return;
-
 }
 
 
@@ -1278,17 +1056,17 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
   // addVariable( "extraEleGenAcc",    "3^{rd} electron gen. accept.",       "",           1,   0.,   2.,   false, true  );
   // addVariable( "extraLeptonNumber", "3^{rd} lepton number",               "",           4,   -0.5, 3.5,  true,  true  );
 
-  // Number of reconstructed vertices
-  histos[plotlab+"nvtx"]->Fill(nvtx, wght);
-
   Float_t thismass = getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz);
   histos[plotlab+"dileptMass"]->Fill(thismass, wght);
-  if( fabs(thismass-91.1876)>10. ) return;
+  if( fabs(thismass-91.1876)>15. ) return;
+  //if( fabs(thismass-91.1876)>10. ) return;
+  histos[plotlab+"cutFlow"]->Fill("dileptMass", wght);
 
   // Z pt > 30
   Float_t zPt = getPt(l1_px+l2_px, l1_py+l2_py);
   histos[plotlab+"dileptPt"]->Fill(zPt, wght);
   if(zPt<30.) return;
+  histos[plotlab+"cutFlow"]->Fill("dileptPt", wght);
 
   // Anti-b-tag only jets>20
   std::vector<UInt_t> jets20 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 20.);
@@ -1298,43 +1076,42 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
   }
   histos[plotlab+"jetCsv"]->Fill(thisbtagval, wght);
   if(thisbtagval>0.244) return;
+  histos[plotlab+"cutFlow"]->Fill("jetCsv", wght);
 
   // Jet veto only jets>30
   std::vector<UInt_t> jets30 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 30.);
   unsigned int jets30N = jets30.size();
   histos[plotlab+"jetNumber"]->Fill(jets30N, wght);
   if( jets30N>0 ) return;
+  histos[plotlab+"cutFlow"]->Fill("jetNumber", wght);
 
-  // // Ind. minimized CMS RedMET > 50
-  // Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
-  // histos[plotlab+"cmsIndMinRedMet"]->Fill(thisCMSredMet, wght);
-  // if( thisCMSredMet<50. ) return;
+  // TMP: n. of extra leptons
 
-  // D0 RedMET > 50
-  Float_t thisD0redMet = getD0RedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
-  histos[plotlab+"d0RedMet"]->Fill(thisD0redMet, wght);
-  if( thisD0redMet<50. ) return;
+  // Ind. minimized CMS RedMET > 50
+  //Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
+  Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, 0., l2_px, l2_py, 0., htvec_px, htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
+  histos[plotlab+"cmsIndMinRedMet"]->Fill(thisCMSredMet, wght);
+  if( thisCMSredMet<50. ) return;
+  histos[plotlab+"cutFlow"]->Fill("cmsIndMinRedMet", wght);
+
+  // // D0 RedMET > 50
+  // Float_t thisD0redMet = getD0RedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
+  // histos[plotlab+"d0RedMet"]->Fill(thisD0redMet, wght);
+  // if( thisD0redMet<50. ) return;
+  // histos[plotlab+"cutFlow"]->Fill("d0RedMet", wght);
 
   // 0.4 < bal < 1.8
   Float_t metPtBal = ( zPt>0 ? met_pt[0]/zPt : -1. );
   histos[plotlab+"metPtBalance"]->Fill(metPtBal, wght);
   if(metPtBal<0.4 || metPtBal>1.8) return;
+  histos[plotlab+"cutFlow"]->Fill("metPtBalance", wght);
 
   Float_t dPhiJetMet = 4.0;
   Int_t idxClosestJet = -1;
   dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet);
   histos[plotlab+"deltaPhiJetMet"]->Fill(metPtBal, wght);
-  if(dPhiJetMet<0.1) return;
-
-
-  // Study third lepton pt
-  for(Int_t ii=0; ii<ln; ++ii) {
-    if( abs(ln_id[ii])==13 )
-      histos[plotlab+"thirdMuPt"]->Fill( getPt(ln_px[ii], ln_py[ii]), wght );
-    else if( abs(ln_id[ii])==11 )
-      histos[plotlab+"thirdEPt"]->Fill( getPt(ln_px[ii], ln_py[ii]), wght );
-    else {}
-  }
+  if(dPhiJetMet<0.5) return;
+  histos[plotlab+"cutFlow"]->Fill("deltaPhiJetMet", wght);
 
   // // pt>10 both ele and mu 
   // std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
@@ -1344,6 +1121,7 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
 
   // WZ background
 
+  /*
   // Useful WZ plots
   if( plotlab.Contains("_wz_") ) {
 
@@ -1412,18 +1190,23 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
     else {}
 
   } // end if( plotlab.Contains("_wz_") )
+  */
 
   // pt>10 both ele and mu 
   std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
   unsigned int thirdlept10N = thirdlept10.size();
   histos[plotlab+"extraLeptonNumber"]->Fill(thirdlept10N, wght);
-  if( thirdlept10N!=1 ) return; // 3rd lepton anti-veto: accept only if event has EXACTLY one extra lepton
+  //if( thirdlept10N!=1 ) return; // 3rd lepton anti-veto: accept only if event has EXACTLY one extra lepton
+  if( thirdlept10N==0 ) {
+    histos[plotlab+"extraLepton0"]->Fill(1., wght);
+  }
+  else if( thirdlept10N==1 ) {
+    histos[plotlab+"extraLepton1"]->Fill(1., wght);
+  }
 
-  Float_t extraFact = getWzCorrection( cat, ln_id[thirdlept10[0]] );
-  histos[plotlab+"finalYield"]->Fill( 1., wght*extraFact );
+  //Float_t extraFact = getWzCorrection( cat, ln_id[thirdlept10[0]] );
 
   return;
-
 }
 
 void printEvents(std::map<int, TString> & finst, 
@@ -1453,13 +1236,17 @@ void printEvents(std::map<int, TString> & finst,
       std::cout << std::endl;
       std::cout << higgslabs[j];
 
-      TString plotlab = "h_"+higgslabs[j]+"_"+fs->second+"_";
+      TString plotlab = "h_"+higgslabs[j]+"_"+fs->second+"_cutFlow";
 
       // 
       // Loop over variables
       // 
       for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
-	std::cout << "\t" << higgshistos[plotlab+allVarsToPrint[h]]->Integral(0, -1);
+	double tmpVal = higgshistos[plotlab]->GetBinContent(h+1);
+	double tmpErr = higgshistos[plotlab]->GetBinError(h+1);
+	int errOrd = approxToN(tmpErr, 1);
+	approxToN(tmpVal, 1, errOrd);
+	std::cout << "\t" << tmpVal;
       }
     }
 
@@ -1481,15 +1268,17 @@ void printEvents(std::map<int, TString> & finst,
       std::cout << std::endl;
       std::cout << thislab;
 
-      TString plotlab = "h_"+thislab+"_"+fs->second+"_";
+      TString plotlab = "h_"+thislab+"_"+fs->second+"_cutFlow";
 
       // 
       // Loop over variables
       // 
       for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
-	double tmpError = 0.0;
-	std::cout << "\t" << histos[plotlab+allVarsToPrint[h]]->IntegralAndError(0, -1, tmpError);
-	//std::cout << " +- " << tmpError;
+	double tmpVal = histos[plotlab]->GetBinContent(h+1);
+	double tmpErr = histos[plotlab]->GetBinError(h+1);
+	int errOrd = approxToN(tmpErr, 1);
+	approxToN(tmpVal, 1, errOrd);
+	std::cout << "\t" << tmpVal;
       }
     }
 
@@ -1500,15 +1289,18 @@ void printEvents(std::map<int, TString> & finst,
       std::cout << std::endl;
       std::cout << "Tot. MC";
 
-      TString plotlab = "h_sumAllMc_"+fs->second+"_";
+      TString plotlab = "h_sumAllMc_"+fs->second+"_cutFlow";
 
       // 
       // Loop over variables
       // 
       for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
-	double tmpMcError = 0.0;
-	std::cout << "\t" << tothistos[plotlab+allVarsToPrint[h]]->IntegralAndError(0, -1, tmpMcError);
-	std::cout << " +- " << tmpMcError;
+	double tmpVal = tothistos[plotlab]->GetBinContent(h+1);
+	double tmpErr = tothistos[plotlab]->GetBinError(h+1);
+	int errOrd = approxToN(tmpErr, 1);
+	approxToN(tmpVal, 1, errOrd);
+	std::cout << "\t" << tmpVal
+		  << " +- " << tmpErr;
       }
     }
 
@@ -1519,15 +1311,18 @@ void printEvents(std::map<int, TString> & finst,
       std::cout << std::endl;
       std::cout << "data";
 
-      TString plotlab = "h_data_"+fs->second+"_";
+      TString plotlab = "h_data_"+fs->second+"_cutFlow";
 
       // 
       // Loop over variables
       // 
       for(unsigned int h=0; h<allVarsToPrint.size(); ++h) {
-	double tmpDtError = 0.0;
-	std::cout << "\t" << datahistos[plotlab+allVarsToPrint[h]]->IntegralAndError(0, -1, tmpDtError);
-	std::cout << " +- " << tmpDtError;
+	double tmpVal = datahistos[plotlab]->GetBinContent(h+1);
+	double tmpErr = datahistos[plotlab]->GetBinError(h+1);
+	int errOrd = approxToN(tmpErr, 1);
+	approxToN(tmpVal, 1, errOrd);
+	std::cout << "\t" << tmpVal
+		  << " +- " << tmpErr;
       }
     }
 

@@ -1311,3 +1311,46 @@ Float_t getWzCorrection(Int_t evttype, Int_t flav3rd) {
 
   return corrFact;
 }
+
+
+int approxToN(double & xToApp, int nOrd, int def=-999) {
+
+  double xTmp = xToApp;
+  int ord  = 0;
+  int ordR = 0;
+
+  if(def<-990) {
+    if(xTmp>=10.) {
+      while(xTmp>=10.) {
+	xTmp/=10.; 
+	ordR++; 
+	if (ordR>20) {
+	  std::cout << "\n  *** ERROR IN approxToN()!!! ***" << std::endl;
+	  std::cout << "\n      ordR > 20!" << std::endl;
+	  break;
+	}
+      }
+    }
+    else if(xTmp<1.) {
+      while(xTmp<1.)   {
+	xTmp*=10.; 
+	ordR--;
+	if (ordR<-20) {
+	  std::cout << "\n  *** ERROR IN approxToN()!!! ***" << std::endl;
+	  std::cout << "\n      ordR < -20!" << std::endl;
+	  break;
+	}
+      }
+    }
+    else {}
+
+    ord = nOrd - ordR;
+  }
+  else {
+    ord = nOrd - def;
+  }
+
+  xToApp = int(xToApp*pow(10,ord) + 0.5)*pow(10, (-1)*ord);
+
+  return ordR;
+}
