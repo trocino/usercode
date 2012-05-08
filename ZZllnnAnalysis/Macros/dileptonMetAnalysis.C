@@ -38,7 +38,7 @@ using namespace std;
 // 
 // Function to fill plots
 // 
-void fillPlots(std::map<TString, TH1F*> &, TString, double wght = 1.0);
+void fillPlots(std::map<TString, TH1F*> &, TString, double wght = 1.0, double puWght = -1.0);
 void printEvents(std::map<int, TString> &, 
 		 std::map<TString, TH1F*> &, unsigned int, TString *,
 		 std::map<TString, TH1F*> &, unsigned int, TString *, bool, 
@@ -141,6 +141,30 @@ void dileptonMetAnalysis() {
     return;
   }
 
+  // Correction factors for PU re-weighting, process by process
+  // zz	        CF = (77686 +- 278.722) / (78867.3 +- 304.917) = 0.985022 +- 0.00519546
+  // wz	        CF = (205335 +- 453.139) / (208323 +- 494.938) = 0.985657 +- 0.00319611
+  // ww	        CF = (172559 +- 415.402) / (176613 +- 458.705) = 0.977047 +- 0.00346001
+  // tt	        CF = (98733 +- 314.218) / (101587 +- 348.506) = 0.971905 +- 0.00454799
+  // t	        CF = (96185 +- 310.137) / (99457 +- 343.772) = 0.967101 +- 0.00457143
+  // zzx	CF = (111301 +- 333.618) / (113072 +- 363.994) = 0.984336 +- 0.00432967
+  // w	        CF = (449812 +- 670.68) / (483117 +- 763.878) = 0.931061 +- 0.00202346
+  // z	        CF = (6.697e+06 +- 2587.86) / (6.90884e+06 +- 2847.21) = 0.969338 +- 0.000547617
+  // zh105	CF = (15114 +- 122.939) / (15511.4 +- 136.691) = 0.974381 +- 0.0116853
+  // zh115	CF = (15646 +- 125.084) / (15911.9 +- 135.785) = 0.98329 +- 0.011498
+  // zh125	CF = (15403 +- 124.109) / (15713.3 +- 136.341) = 0.980251 +- 0.0116071
+  // zh150	CF = (15917 +- 126.163) / (16212.4 +- 139.321) = 0.981777 +- 0.0114777
+  // 
+  // {"zh105", "zh115", "zh125", "zh150", "zz", "wz", "ww", "tt", "t_s", "tbar_s", "t_t", "tbar_t", "t_tw", "tbar_tw", "zzx", "w", "z"};
+  double puCorrFact[] = {0.974381, 0.98329, 0.980251, 0.981777, 0.985022, 0.985657, 0.977047, 0.971905, 0.967101, 0.967101, 0.967101, 0.967101, 0.967101, 0.967101, 0.984336, 0.931061, 0.979652};
+  unsigned int nPuCorrFact = sizeof(puCorrFact)/sizeof(double);
+  if( nPuCorrFact != nSmps ) {
+    std::cout << " *************************** ERROR ***************************" << endl;
+    std::cout << "    Number of PU corr. factors != number of samples! Check!"    << std::endl;
+    return;
+  }
+
+
   // Colors and marker styles, process by process
   Color_t cols[]={kBlack, kBlack, kBlack, kBlack, kRed, kMagenta, kViolet-1, kBlue, kCyan, kCyan, kCyan, kCyan, kCyan, kCyan, kGreen, kSpring+3, kYellow-7};
   Style_t mrks[]={25, 25, 25, 25, 21, 22, 23, 24, 25, 25, 25, 25, 25, 25, 26, 27, 28, 29, 30, 31, 32};
@@ -172,8 +196,8 @@ void dileptonMetAnalysis() {
   TString alllabelstouse[]={"zz", "wz", "ww", "tt", "t_s", "tbar_s", "t_t", "tbar_t", "t_tw", "tbar_tw", "zzx", "w", "z"};
   unsigned int nSmpsToUse=sizeof(alllabelstouse)/sizeof(TString);
 
-  TString allhiggslabelstouse[]={};
-  //TString allhiggslabelstouse[]={"zh105", "zh115", "zh125", "zh150"};
+  //TString allhiggslabelstouse[]={};
+  TString allhiggslabelstouse[]={"zh105", "zh115", "zh125", "zh150"};
   unsigned int nHiggsSmpsToUse=sizeof(allhiggslabelstouse)/sizeof(TString);
 
   if( nSmps < (nSmpsToUse+nHiggsSmpsToUse) ) {
@@ -189,6 +213,7 @@ void dileptonMetAnalysis() {
   std::map<TString, std::vector<double> >  allpileups;
   std::map<TString, double>  allxsect;
   std::map<TString, double>  allbrfra;
+  std::map<TString, double>  allpucfs;
   std::map<TString, Color_t> allcols;
   std::map<TString, Style_t> allmrks;
   std::map<TString, Style_t> alllines;
@@ -207,9 +232,9 @@ void dileptonMetAnalysis() {
   allfiles["t_s"].push_back(base_mc+"SingleT_s.root");   allfiles["tbar_s"].push_back(base_mc+"SingleTbar_s.root");
   allfiles["zzx"].push_back(base_mc+"ZZ_0.root"); allfiles["zz"].push_back(base_mc+"ZZ_1.root");
   allfiles["w"].push_back(base_mc+"WJetsToLNu.root"); 
-  // allfiles["z"].push_back(base_mc+"DYJetsToLL_0.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_1.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_2.root"); 
-  // allfiles["z"].push_back(base_mc+"DYJetsToLL_3.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_4.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_5.root"); 
-  // allfiles["z"].push_back(base_mc+"DYJetsToLL_6.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_7.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_8.root"); 
+  allfiles["z"].push_back(base_mc+"DYJetsToLL_0.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_1.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_2.root"); 
+  allfiles["z"].push_back(base_mc+"DYJetsToLL_3.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_4.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_5.root"); 
+  allfiles["z"].push_back(base_mc+"DYJetsToLL_6.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_7.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_8.root"); 
   allfiles["z"].push_back(base_mc+"DYJetsToLL_9.root"); 
 
   for(unsigned int k=0; k<nSmps; ++k) {
@@ -249,6 +274,10 @@ void dileptonMetAnalysis() {
     // ---------------------------
     // Fill maps with branching ratios
     allbrfra[alllabels[k]]=brFra[k];
+
+    // ---------------------------
+    // Fill maps with PU correction factors
+    allpucfs[alllabels[k]]=puCorrFact[k];
 
     // ---------------------------
     // Fill maps with colors
@@ -302,17 +331,19 @@ void dileptonMetAnalysis() {
   //
   //           Variable             Title X                                     Y   N    x0     xN           Plot   Print
   //addVariable( "nvtx",              "Number of reconstructed vertices",         "", 34,  0.5,   34.5,        true,  false );
+  addVariable( "preselEntries",     "NumberEntriesPresel",                      "", 1,   0.,    2.,          false, false );
+  addVariable( "preselWeights",     "Preselection",                             "", 1,   0.,    2.,          false, true  );
   addVariable( "dileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "", 60,  60.,   120.,        true,  true  );
   addVariable( "dileptPt",          "Dilepton p_{T} [GeV/c]",                   "", 60,  0.,    120.,        true,  true  );
   addVariable( "jetCsv",            "CSV discriminator (PFJet p_{T} > 20 GeV)", "", 22,  -1.1,  1.1,         true,  true  );
   addVariable( "jetNumber",         "PFJet number (p_{T} > 30 GeV/c)",          "", 6,   -0.5,  5.5,         true,  true  );
-  addVariable( "thirdLeptonNumber", "Third lepton number (before MET)",         "", 4,   -0.5,  3.5,         true,  false );
+  // // addVariable( "thirdLeptonNumber", "Third lepton number (before MET)",         "", 4,   -0.5,  3.5,         true,  false );
   addVariable( "cmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        true,  true  ); 
   //addVariable( "d0RedMet",          "D0 reduced MET [GeV]",                     "", 100, 0.,    300.,        true,  true  ); 
   addVariable( "metPtBalance",      "PF MET/p_{T}(Z)",                          "", 30,  0.,    3.,          true,  true  ); 
   addVariable( "deltaPhiJetMet",    "#Delta#phi(jet,MET) [rad]",                "", 18., 0.,    3.141592654, true,  true  ); 
-  addVariable( "thirdMuPt",         "Third muon p_{T} [GeV/c]",                 "", 60,  0.,    60.,         true,  false );
-  addVariable( "thirdEPt",          "Third electron p_{T} [GeV/c]",             "", 60,  0.,    60.,         true,  false );
+  // // addVariable( "thirdMuPt",         "Third muon p_{T} [GeV/c]",                 "", 60,  0.,    60.,         true,  false );
+  // // addVariable( "thirdEPt",          "Third electron p_{T} [GeV/c]",             "", 60,  0.,    60.,         true,  false );
   addVariable( "extraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         true,  true  );
 
   unsigned int numberCuts = allVarsToPrint.size();
@@ -393,6 +424,9 @@ void dileptonMetAnalysis() {
     //std::map<TString, TH1F*> allpoisdiffhistos;
     std::map<TString, TH1F*> allfracdiffhistos;
 
+    std::map<TString, TH1F*> allentriessum;
+    std::map<TString, TH1F*> allweightssum;
+
     // 
     // All histos and other stuff
     // 
@@ -444,6 +478,16 @@ void dileptonMetAnalysis() {
 	// Switch to pile-up scenarion for this MC sample
 	puWeights = allpileups[alllabelstouse[j]];
 
+	// Get sum of entries and weights for correction on pile-up weights (Pedro's way)
+	// (names will be "h_process_")
+	if(addThisPlot) {
+	  allentriessum[plotname+"sumEntries"] = new TH1F( (plotname+"sumEntries").Data(), "", 1, 0., 2. );
+	  allweightssum[plotname+"sumWeights"] = new TH1F( (plotname+"sumWeights").Data(), "", 1, 0., 2. );
+
+	  allentriessum[plotname+"sumEntries"]->Sumw2();
+	  allweightssum[plotname+"sumWeights"]->Sumw2();
+	}
+
 	TString dopt="";
 	if(j_ah > -1) dopt="same";
 	//allpads1[i]->cd();
@@ -470,7 +514,7 @@ void dileptonMetAnalysis() {
 	attachToTree(alltrees[alllabelstouse[j]]);
 
 	// General weight
-	float genWeight = intLumi * allxsect[alllabelstouse[j]] * allbrfra[alllabelstouse[j]] / allgenev[alllabelstouse[j]];
+	float genWeight = intLumi * allxsect[alllabelstouse[j]] * allbrfra[alllabelstouse[j]] * allpucfs[alllabelstouse[j]] / allgenev[alllabelstouse[j]];
 
 	// 
 	// Loop over events
@@ -492,13 +536,20 @@ void dileptonMetAnalysis() {
 	    }
 	  }
 
-	  if( finalStates.count(cat)>0 ) {
+	  // Fill plots with sum of entries and weights for correction on pile-up weights (Pedro's way)
+	  // N.B.: all channels together!
+	  allentriessum[plotname+"sumEntries"]->Fill(1);
+	  allweightssum[plotname+"sumWeights"]->Fill(1, getPuWeights(ngenITpu));
+
+	  if( finalStates.count(cat)>0 ) {  // one of the chosen categories (1: mm; 2: ee; 3: em)
 
 	    TString plotIdx = plotname+finalStates[cat]+"_";
 	    // Event weight
 	    float evtWeight = genWeight * getPuWeights(ngenITpu);
 
-	    fillPlots(allhistos, plotIdx, evtWeight);
+	    // TEMPORARY!!!!!!!!!!!!!!!!!!!!!
+	    fillPlots(allhistos, plotIdx, evtWeight, getPuWeights(ngenITpu)); 
+	    //fillPlots(allhistos, plotIdx, 1.000);
 	  }
 	}
 	// 
@@ -560,6 +611,14 @@ void dileptonMetAnalysis() {
 	// Switch to pile-up scenarion for this MC sample
 	puWeights = allpileups[allhiggslabelstouse[j]];
 
+	// Get sum of entries and weights for correction on pile-up weights (Pedro's way)
+	// (names will be "h_process_")
+	allentriessum[plotname+"sumEntries"] = new TH1F( (plotname+"sumEntries").Data(), "", 1, 0., 2. );
+	allweightssum[plotname+"sumWeights"] = new TH1F( (plotname+"sumWeights").Data(), "", 1, 0., 2. );
+
+	allentriessum[plotname+"sumEntries"]->Sumw2();
+	allweightssum[plotname+"sumWeights"]->Sumw2();
+
 	for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
 	  for(std::vector<TString>::iterator varsToPlot = variables.begin(); varsToPlot!=variables.end(); ++varsToPlot) {
 	    TString plotIdx = plotname+finStat->second+"_"+(*varsToPlot);
@@ -580,7 +639,7 @@ void dileptonMetAnalysis() {
 	attachToTree(alltrees[allhiggslabelstouse[j]]);
 
 	// General weight
-	float genWeight = intLumi * allxsect[allhiggslabelstouse[j]] * allbrfra[allhiggslabelstouse[j]] / allgenev[allhiggslabelstouse[j]];
+	float genWeight = intLumi * allxsect[allhiggslabelstouse[j]] * allbrfra[allhiggslabelstouse[j]] * allpucfs[alllabelstouse[j]] / allgenev[allhiggslabelstouse[j]];
 
 	// 
 	// Loop over events
@@ -588,13 +647,18 @@ void dileptonMetAnalysis() {
 	for(unsigned int iEvt=0; iEvt<nEvt; ++iEvt) {
 	  alltrees[allhiggslabelstouse[j]]->GetEntry(iEvt);
 
+	  // Fill plots with sum of entries and weights for correction on pile-up weights (Pedro's way)
+	  // N.B.: all channels together!
+	  allentriessum[plotname+"sumEntries"]->Fill(1);
+	  allweightssum[plotname+"sumWeights"]->Fill(1, getPuWeights(ngenITpu));
+
 	  if( finalStates.count(cat)>0 ) {
 
 	    TString plotIdx = plotname+finalStates[cat]+"_";
 	    // Event weight
 	    float evtWeight = genWeight * getPuWeights(ngenITpu);
 
-	    fillPlots(allhiggshistos, plotIdx, evtWeight);
+	    fillPlots(allhiggshistos, plotIdx, evtWeight, getPuWeights(ngenITpu));
 	  }
 	}
 
@@ -845,6 +909,75 @@ void dileptonMetAnalysis() {
 		  allmchistos, 
 		  alldatahistos);
     }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    // Final correction factors for PU (Pedro's way)
+    // // All samples
+    bool stopTop = false;
+    for(unsigned int j=0; j<nSmpsToUse; ++j) {
+
+      TString thislab = alllabelstouse[j];
+      bool mergingtop = (thislab.BeginsWith("t_") || thislab.BeginsWith("tbar_")) && mergeTopSamples;
+      if(mergingtop && stopTop) continue;
+
+      if(mergingtop) {
+	thislab = "t";
+	stopTop = true;
+      }
+
+      std::cout << std::endl;
+      std::cout << thislab;
+
+      TString entrylab = "h_"+thislab+"_sumEntries";
+      TString weighlab = "h_"+thislab+"_sumWeights";
+
+      double totentries = allentriessum[entrylab]->GetBinContent(1);
+      double totentrErr = allentriessum[entrylab]->GetBinError(1);
+      double totweights = allweightssum[weighlab]->GetBinContent(1);
+      double totweigErr = allweightssum[weighlab]->GetBinError(1);
+
+      double cfWeight = totentries/totweights;
+      double cfWeiErr = cfWeight * sqrt( pow((totentrErr/totentries), 2) + pow((totweigErr/totweights), 2) );
+
+      std::cout << "\t" 
+		<< "CF = (" << totentries
+		<< " +- "   << totentrErr
+		<< ") / ("  << totweights
+		<< " +- "   << totweigErr
+		<< ") = "   << cfWeight
+		<< " +- "   << cfWeiErr;
+    }
+
+    // // Higgs samples
+    for(unsigned int j=0; j<nHiggsSmpsToUse; ++j) {
+      std::cout << std::endl;
+      std::cout << allhiggslabelstouse[j];
+
+      TString entrylab = "h_"+allhiggslabelstouse[j]+"_sumEntries";
+      TString weighlab = "h_"+allhiggslabelstouse[j]+"_sumWeights";
+
+      double totentries = allentriessum[entrylab]->GetBinContent(1);
+      double totentrErr = allentriessum[entrylab]->GetBinError(1);
+      double totweights = allweightssum[weighlab]->GetBinContent(1);
+      double totweigErr = allweightssum[weighlab]->GetBinError(1);
+
+      double cfWeight = totentries/totweights;
+      double cfWeiErr = cfWeight * sqrt( pow((totentrErr/totentries), 2) + pow((totweigErr/totweights), 2) );
+
+      std::cout << "\t" 
+		<< "CF = (" << totentries
+		<< " +- "   << totentrErr
+		<< ") / ("  << totweights
+		<< " +- "   << totweigErr
+		<< ") = "   << cfWeight
+		<< " +- "   << cfWeiErr;
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
   } // end if(doPlot)
 
   // -- // -- // -- // -- // -- // -- // -- // -- // -- // -- // -- // 
@@ -855,7 +988,9 @@ void dileptonMetAnalysis() {
 }
 
 
-void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) {
+void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght, double puWght) {
+
+  if(puWght<0.) puWght = wght;
 
   // //           Variable             Title X                                     Y   N    x0     xN           Plot   Print
   // addVariable( "nvtx",              "Number of reconstructed vertices",         "", 34,  0.5,   34.5,        true,  false );
@@ -871,50 +1006,66 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
   // addVariable( "thirdEPt",          "Third electron p_{T} [GeV/c]",             "", 60,  0.,    60.,         true,  false );
   // addVariable( "extraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         true,  true  );
 
-  //Float_t momScale
+  Float_t momSc1 = 1.;
+  Float_t momSc2 = 1.;
+
+  // Float_t momSc1 = getMomScaleFactor(l1_id, l1_px, l1_py, l1_pz);
+  // Float_t momSc2 = getMomScaleFactor(l2_id, l2_px, l2_py, l2_pz);
+
+  // if( getPt(momSc1*l1_px, momSc1*l1_py)<20. ) return;
+  // if( getPt(momSc2*l2_px, momSc2*l2_py)<20. ) return;
 
   // // Number of reconstructed vertices
   // histos[plotlab+"nvtx"]->Fill(nvtx, wght);
+  histos[plotlab+"preselEntries"]->Fill(1.);
+  //histos[plotlab+"cutFlow"]->Fill("preselEntries", 1);
 
-  Float_t thismass = getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz);
+  // WARNING!!!
+  // Filled with ONLY PU weight!!! (To get correction factor on PU!)
+  histos[plotlab+"preselWeights"]->Fill(1., puWght); 
+  histos[plotlab+"cutFlow"]->Fill("preselWeights", wght); // full weight (for cut-flow plot/table)
+
+  Float_t thismass = getMass(momSc1*l1_en+momSc2*l2_en, momSc1*l1_px+momSc2*l2_px, momSc1*l1_py+momSc2*l2_py, momSc1*l1_pz+momSc2*l2_pz);
   histos[plotlab+"dileptMass"]->Fill(thismass, wght);
-  if( fabs(thismass-91.1876)>15. ) return;
+  if( fabs(thismass-91.)>15. ) return;
+  //if( fabs(thismass-91.)>10. ) return;
+  //if( fabs(thismass-91.1876)>15. ) return;
   //if( fabs(thismass-91.1876)>10. ) return;
   histos[plotlab+"cutFlow"]->Fill("dileptMass", wght);
 
   // Z pt > 30
-  Float_t zPt = getPt(l1_px+l2_px, l1_py+l2_py);
+  Float_t zPt = getPt(momSc1*l1_px+momSc2*l2_px, momSc1*l1_py+momSc2*l2_py);
   histos[plotlab+"dileptPt"]->Fill(zPt, wght);
   if(zPt<30.) return;
   histos[plotlab+"cutFlow"]->Fill("dileptPt", wght);
 
   // Anti-b-tag only jets>20
-  std::vector<UInt_t> jets20 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 20.);
-  Float_t thisbtagval = -2.;
-  for(std::vector<UInt_t>::const_iterator jj=jets20.begin(); jj!=jets20.end(); ++jj) {
-    if(jn_btag2[*jj]>thisbtagval) thisbtagval = jn_btag2[*jj];
-  }
+  Int_t idxHighestCsv = -1;
+  //Float_t thisbtagval = getMaxValue(jnum, jn_btag2, idxHighestCsv, jn_px, jn_py, jn_pz, 20., 2.5, jn_tightId);
+  Float_t thisbtagval = getMaxValue(jnum, jn_btag2, idxHighestCsv, jn_px, jn_py, jn_pz, 20., 2.5);
   histos[plotlab+"jetCsv"]->Fill(thisbtagval, wght);
   if(thisbtagval>0.244) return;
   histos[plotlab+"cutFlow"]->Fill("jetCsv", wght);
 
   // Jet veto only jets>30
+  //std::vector<UInt_t> jets30 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 30., 0, 0, 0, jn_tightId);
   std::vector<UInt_t> jets30 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 30.);
   unsigned int jets30N = jets30.size();
   histos[plotlab+"jetNumber"]->Fill(jets30N, wght);
   if( jets30N>0 ) return;
   histos[plotlab+"cutFlow"]->Fill("jetNumber", wght);
 
-  // TMP: n. of extra leptons
-  std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
-  unsigned int thirdlept10N = thirdlept10.size();
-  histos[plotlab+"thirdLeptonNumber"]->Fill(thirdlept10N, wght);
+  // // TMP: n. of extra leptons
+  // std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
+  // unsigned int thirdlept10N = thirdlept10.size();
+  // histos[plotlab+"thirdLeptonNumber"]->Fill(thirdlept10N, wght);
 
   // Ind. minimized CMS RedMET > 50
   //Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
-  Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, 0., l2_px, l2_py, 0., htvec_px, htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
+  Float_t thisCMSredMet = getCMSRedMet(momSc1*l1_px, momSc1*l1_py, 0., momSc2*l2_px, momSc2*l2_py, 0., htvec_px, htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
   histos[plotlab+"cmsIndMinRedMet"]->Fill(thisCMSredMet, wght);
   if( thisCMSredMet<50. ) return;
+  //if( thisCMSredMet<60. ) return;
   histos[plotlab+"cutFlow"]->Fill("cmsIndMinRedMet", wght);
 
   // // D0 RedMET > 50
@@ -931,23 +1082,25 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
 
   Float_t dPhiJetMet = 4.0;
   Int_t idxClosestJet = -1;
-  dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet);
-  histos[plotlab+"deltaPhiJetMet"]->Fill(metPtBal, wght);
+  dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet, 20.);
+  //dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet, 0., jn_tightId);
+  histos[plotlab+"deltaPhiJetMet"]->Fill(dPhiJetMet, wght);
   if(dPhiJetMet<0.5) return;
   histos[plotlab+"cutFlow"]->Fill("deltaPhiJetMet", wght);
 
-  // Study third lepton pt
-  for(Int_t ii=0; ii<ln; ++ii) {
-    if( abs(ln_id[ii])==13 )
-      histos[plotlab+"thirdMuPt"]->Fill( getPt(ln_px[ii], ln_py[ii]), wght );
-    else if( abs(ln_id[ii])==11 )
-      histos[plotlab+"thirdEPt"]->Fill( getPt(ln_px[ii], ln_py[ii]), wght );
-    else {}
-  }
+  // // Study third lepton pt
+  // for(Int_t ii=0; ii<ln; ++ii) {
+  //   if( abs(ln_id[ii])==13 )
+  //     histos[plotlab+"thirdMuPt"]->Fill( getPt(ln_px[ii], ln_py[ii]), wght );
+  //   else if( abs(ln_id[ii])==11 )
+  //     histos[plotlab+"thirdEPt"]->Fill( getPt(ln_px[ii], ln_py[ii]), wght );
+  //   else {}
+  // }
 
   // pt>10 both ele and mu (mu is pt>3 in the tree, could go as low as 5)
-  //std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
-  //unsigned int thirdlept10N = thirdlept10.size();
+  std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
+  //std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10., true, ln_id, ln_pz);
+  unsigned int thirdlept10N = thirdlept10.size();
   histos[plotlab+"extraLeptonNumber"]->Fill(thirdlept10N, wght);
   if( thirdlept10N>0 ) return;
   histos[plotlab+"cutFlow"]->Fill("extraLeptonNumber", wght);
@@ -1074,6 +1227,114 @@ void printEvents(std::map<int, TString> & finst,
 
     std::cout << std::endl;
   }
+
+  // 
+  // Weight to correct pile-up re-weighting (Pedro's way)
+  //
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << " WEIGHTS for PU:";
+  std::cout << std::endl;
+
+  for(std::map<int, TString>::iterator fs=finst.begin(); fs!=finst.end(); ++fs) {
+
+    std::cout << fs->second.Data() << std::endl;
+
+    // 
+    // Loop over Higgs samples
+    // 
+    for(unsigned int j=0; j<nhiggslabs; ++j) {
+      std::cout << std::endl;
+      std::cout << higgslabs[j];
+
+      TString entrylab = "h_"+higgslabs[j]+"_"+fs->second+"_preselEntries";
+      TString weighlab = "h_"+higgslabs[j]+"_"+fs->second+"_preselWeights";
+
+      double totentries = higgshistos[entrylab]->GetBinContent(1);
+      double totentrErr = higgshistos[entrylab]->GetBinError(1);
+      double totweights = higgshistos[weighlab]->GetBinContent(1);
+      double totweigErr = higgshistos[weighlab]->GetBinError(1);
+
+      double cfWeight = totentries/totweights;
+      double cfWeiErr = cfWeight * sqrt( pow((totentrErr/totentries), 2) + pow((totweigErr/totweights), 2) );
+
+      std::cout << "\t" 
+		<< "CF = (" << totentries
+		<< " +- "   << totentrErr
+		<< ") / ("  << totweights
+		<< " +- "   << totweigErr
+		<< ") = "   << cfWeight
+		<< " +- "   << cfWeiErr;
+    }
+
+    // 
+    // Loop over samples
+    // 
+    bool stoptop = false;
+    for(unsigned int j=0; j<nlabs; ++j) {
+
+      TString thislab = labs[j];
+      bool mergingtop = (thislab.BeginsWith("t_") || thislab.BeginsWith("tbar_")) && mergetop;
+      if(mergingtop && stoptop) continue;
+
+      if(mergingtop) {
+	thislab = "t";
+	stoptop = true;
+      }
+
+      std::cout << std::endl;
+      std::cout << thislab;
+
+      TString entrylab = "h_"+thislab+"_"+fs->second+"_preselEntries";
+      TString weighlab = "h_"+thislab+"_"+fs->second+"_preselWeights";
+
+      double totentries = histos[entrylab]->GetBinContent(1);
+      double totentrErr = histos[entrylab]->GetBinError(1);
+      double totweights = histos[weighlab]->GetBinContent(1);
+      double totweigErr = histos[weighlab]->GetBinError(1);
+
+      double cfWeight = totentries/totweights;
+      double cfWeiErr = cfWeight * sqrt( pow((totentrErr/totentries), 2) + pow((totweigErr/totweights), 2) );
+
+      std::cout << "\t" 
+		<< "CF = (" << totentries
+		<< " +- "   << totentrErr
+		<< ") / ("  << totweights
+		<< " +- "   << totweigErr
+		<< ") = "   << cfWeight
+		<< " +- "   << cfWeiErr;
+    }
+
+    // 
+    // Total MC
+    // 
+    {
+      std::cout << std::endl;
+      std::cout << "Tot. MC";
+
+      TString entrylab = "h_sumAllMc_"+fs->second+"_preselEntries";
+      TString weighlab = "h_sumAllMc_"+fs->second+"_preselWeights";
+
+      double totentries = tothistos[entrylab]->GetBinContent(1);
+      double totentrErr = tothistos[entrylab]->GetBinError(1);
+      double totweights = tothistos[weighlab]->GetBinContent(1);
+      double totweigErr = tothistos[weighlab]->GetBinError(1);
+
+      double cfWeight = totentries/totweights;
+      double cfWeiErr = cfWeight * sqrt( pow((totentrErr/totentries), 2) + pow((totweigErr/totweights), 2) );
+
+      std::cout << "\t" 
+		<< "CF = (" << totentries
+		<< " +- "   << totentrErr
+		<< ") / ("  << totweights
+		<< " +- "   << totweigErr
+		<< ") = "   << cfWeight
+		<< " +- "   << cfWeiErr;
+    }
+
+    std::cout << std::endl;
+  }
+
 
   return;
 }

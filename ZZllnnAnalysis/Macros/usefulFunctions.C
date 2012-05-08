@@ -176,6 +176,21 @@ double getPt(double px, double py) {
   return sqrt(px*px + py*py);
 }
 
+double getTransMass(Double_t px1,  Double_t py1,  Double_t mass1, 
+		    Double_t mag2, Double_t phi2, Double_t mass2 ) {
+  TVector2 tm1(px1, py1);
+  TVector2 tm2; tm2.SetMagPhi(mag2, phi2);
+  Double_t pt1 = tm1.Mod();
+  Double_t pt2 = mag2;
+  Double_t ptTot = (tm1+tm2).Mod();
+  Double_t etZ1 = sqrt( pt1*pt1 + mass1*mass1 );
+  Double_t etZ2 = sqrt( pt2*pt2 + mass2*mass2 );
+  Double_t etZZtot = etZ1+etZ2;
+  Double_t transverseMassZZ = sqrt(etZZtot*etZZtot - ptTot*ptTot);
+
+  return transverseMassZZ;
+}
+
 // Phi (0-2pi)
 double getPhi(double px, double py) {
 
@@ -224,25 +239,58 @@ double getMass(double e, double px, double py, double pz) {
   return sqrt( e*e - px*px - py*py - pz*pz );
 }
 
+
+double getMomScaleFactor(Int_t pId, Float_t pX, Float_t pY, Float_t pZ) {
+
+  double momSc = 1.;
+
+  if(abs(pId)==13) momSc = 1.00 - 0.01;
+  else if(abs(pId)==11) {
+    if( fabs(getEta(pX, pY, pZ))<1.4442 ) 
+      momSc = 1.00 - 0.02;
+    else 
+      momSc = 1.00 - 0.035;
+  }
+
+  return momSc;
+}
+
 // Get list of particles above some pt/Et
-std::vector<UInt_t> getListOfParticlesWithPt(UInt_t nPart, Float_t *vPx, Float_t *vPy, Float_t ptThr) {
+std::vector<UInt_t> getListOfParticlesWithPt(UInt_t nPart, Float_t *vPx, Float_t *vPy, Float_t ptThr, bool doScale = false, Int_t *vId = 0, Float_t *vPz = 0, Bool_t *vJetIdTight = 0) {
 
   std::vector<UInt_t> listParts;
 
+  bool momScale(doScale && vId && vPz);
+  bool useJetTightId(vJetIdTight);
+
   for(UInt_t iPart=0; iPart<nPart; ++iPart) {
+    if( useJetTightId && vJetIdTight[iPart]==false ) continue; 
     Float_t thisPt = getPt(vPx[iPart], vPy[iPart]);
+    if(momScale) {
+      thisPt *= getMomScaleFactor(vId[iPart], vPx[iPart], vPy[iPart], vPz[iPart]);
+    }
     if(thisPt>ptThr) listParts.push_back(iPart);
   }
 
   return listParts;
 }
 
-Float_t getMaxValue(UInt_t npart, Float_t *valArr, Int_t & pickedIdx) {
+Float_t getMaxValue(UInt_t npart, Float_t *valArr, Int_t & pickedIdx, 
+		    Float_t *vPx = 0, Float_t *vPy = 0, Float_t *vPz = 0, 
+		    Float_t ptThr = 0., Float_t etaThr = 999., 
+		    Bool_t *vIdTight = 0) {
 
   pickedIdx = -1; 
-  Float_t thisVal = -999.;
+  Float_t thisVal = -999999.;
+
+  bool usePtThr(vPx!=0 && vPy!=0 && ptThr>0.);
+  bool useEtaThr(vPx!=0 && vPy!=0 && vPz!=0 && etaThr<990.);
+  bool useTightId(vIdTight!=0);
 
   for(UInt_t k=0; k<npart; ++k) {
+    if( useTightId && vIdTight[k]==false ) continue; 
+    if( usePtThr && getPt(vPx[k], vPy[k])<ptThr ) continue;
+    if( useEtaThr && fabs(getEta(vPx[k], vPy[k], vPz[k]))>etaThr ) continue;
     if(valArr[k]>thisVal) {
       thisVal = valArr[k];
       pickedIdx = k;
@@ -433,18 +481,32 @@ double getDeltaPhi(float phi1, float phi2) {
 }
 
 // Get particle closest in phi
-Float_t getParticleClosestInPhi(UInt_t npart1, Float_t *px1, Float_t *py1, Float_t phi2, Int_t & pickedIdx) {
+Float_t getParticleClosestInPhi(UInt_t npart1, Float_t *px1, Float_t *py1, Float_t phi2, Int_t & pickedIdx, Float_t ptThr = 0., Bool_t *jetIdTight1 = 0) {
 
   pickedIdx = -1; 
   Float_t thisDPhi = 4.;
 
   for(UInt_t k=0; k<npart1; ++k) {
+    if( jetIdTight1 && jetIdTight1[k]==false ) continue;
+    if( getPt(px1[k], py1[k])<ptThr ) continue;
     Float_t tmpDPhi = getDeltaPhi(px1[k], py1[k], phi2);
     if(tmpDPhi<thisDPhi) {
       thisDPhi = tmpDPhi;
       pickedIdx = k;
     }
   }
+
+  return thisDPhi;
+}
+
+// Get particle closest in phi
+Float_t getParticleClosestInPhi(Float_t px1, Float_t py1, Float_t phi2, Float_t ptThr = 0.) {
+
+  Float_t thisDPhi = 4.;
+
+  if( getPt(px1, py1)<ptThr ) return thisDPhi;
+  Float_t tmpDPhi = getDeltaPhi(px1, py1, phi2);
+  thisDPhi = tmpDPhi;
 
   return thisDPhi;
 }
@@ -1318,6 +1380,8 @@ int approxToN(double & xToApp, int nOrd, int def=-999) {
   double xTmp = xToApp;
   int ord  = 0;
   int ordR = 0;
+
+  if (xTmp==0.) return ordR;
 
   if(def<-990) {
     if(xTmp>=10.) {

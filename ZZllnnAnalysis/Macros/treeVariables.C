@@ -39,6 +39,7 @@ Float_t jn_pz[maxjn];
 Float_t jn_en[maxjn];
 Float_t jn_btag1[maxjn];
 Float_t jn_btag2[maxjn];
+Bool_t  jn_tightId[maxjn];
 Float_t htvec_px;
 Float_t htvec_py;
 Float_t met_pt[maxmet];
@@ -85,6 +86,7 @@ void initializeTreeVariables() {
     jn_en[i] = 0.;
     jn_btag1[i] = 0.;
     jn_btag2[i] = 0.;
+    jn_tightId[i] = false;
   }
   htvec_px = 0.;
   htvec_py = 0.;
@@ -134,6 +136,7 @@ void attachToTree(TChain *t) {
   t->SetBranchAddress("jn_en", &jn_en);
   t->SetBranchAddress("jn_btag1", &jn_btag1);
   t->SetBranchAddress("jn_btag2", &jn_btag2);
+  t->SetBranchAddress("jn_tightId", &jn_tightId);
   t->SetBranchAddress("htvec_px", &htvec_px);
   t->SetBranchAddress("htvec_py", &htvec_py);
   t->SetBranchAddress("met_pt", &met_pt);
