@@ -7,6 +7,7 @@ const UInt_t maxmc  = 50;
 const UInt_t maxln  = 50;
 const UInt_t maxjn  = 50;
 const UInt_t maxmet = 50;
+const UInt_t maxg   = 50;
 
 // Tree variables
 Int_t cat;
@@ -49,6 +50,20 @@ Float_t mc_py[maxmc];
 Float_t mc_pz[maxmc];
 Float_t mc_en[maxmc];
 Int_t   mc_id[maxmc];
+Int_t   gn;
+Float_t g_px[maxg];
+Float_t g_py[maxg];
+Float_t g_pz[maxg];
+Float_t g_en[maxg];
+Float_t g_corren[maxg];
+Float_t g_correnerr[maxg];
+Float_t g_iso1[maxg];
+Float_t g_iso2[maxg];
+Float_t g_iso3[maxg];
+Float_t g_sihih[maxg];
+Float_t g_r9[maxg];
+Float_t g_trkVeto[maxg];
+Float_t g_conv[maxg];
 
 // Initialize variables
 void initializeTreeVariables() {
@@ -101,6 +116,22 @@ void initializeTreeVariables() {
     mc_en[i] = 0.;
     mc_id[i] = 0;
   }
+  gn = 0;
+  for(unsigned int i=0; i<maxg; ++i) {
+    g_px[i] = 0.;
+    g_py[i] = 0.;
+    g_pz[i] = 0.;
+    g_en[i] = 0.;
+    g_corren[i] = 0.;
+    g_correnerr[i] = 0.;
+    g_iso1[i] = 0.;
+    g_iso2[i] = 0.;
+    g_iso3[i] = 0.;
+    g_sihih[i] = 0.;
+    g_r9[i] = 0.;
+    g_trkVeto[i] = 0;
+    g_conv[i] = 0;
+  }
 }
 
 // Set branch addresses
@@ -146,6 +177,20 @@ void attachToTree(TChain *t) {
   t->SetBranchAddress("mc_pz", &mc_pz);
   t->SetBranchAddress("mc_en", &mc_en);
   t->SetBranchAddress("mc_id", &mc_id);
+  t->SetBranchAddress("gn", &gn);
+  t->SetBranchAddress("g_px", &g_px);
+  t->SetBranchAddress("g_py", &g_py);
+  t->SetBranchAddress("g_pz", &g_pz);
+  t->SetBranchAddress("g_en", &g_en);
+  t->SetBranchAddress("g_corren", &g_corren);
+  t->SetBranchAddress("g_correnerr", &g_correnerr);
+  t->SetBranchAddress("g_iso1", &g_iso1);
+  t->SetBranchAddress("g_iso2", &g_iso2);
+  t->SetBranchAddress("g_iso3", &g_iso3);
+  t->SetBranchAddress("g_sihih", &g_sihih);
+  t->SetBranchAddress("g_r9", &g_r9);
+  t->SetBranchAddress("g_trkVeto", &g_trkVeto);
+  t->SetBranchAddress("g_conv", &g_conv);
 
 }
 

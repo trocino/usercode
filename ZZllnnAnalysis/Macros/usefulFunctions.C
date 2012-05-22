@@ -27,6 +27,7 @@ std::vector<TString> cutCascade;                  // Chain of all cuts (data, MC
 std::vector<TString> variables;                   // All variables
 std::vector<TString> allVarsToPlot;               // Variables to plot
 std::vector<TString> allVarsToPrint;              // Variables to print
+std::map<TString, int> allVarsToPrintBins;        // Map connecting the label-n.bin
 std::vector<TString> xtitles;                     // Variables to plot or print
 std::vector<TString> ytitles;                     // Variables to plot or print
 std::map<TString, TString> xTitles;               // Variables to plot or print
@@ -35,9 +36,25 @@ std::vector<TString> binnings;                    // Binning and range limits
 std::map<TString, unsigned int> binsUInt;         // Binning and range limits
 std::map<TString, double> firstBinsDouble;        // Binning and range limits
 std::map<TString, double> lastBinsDouble;         // Binning and range limits
+std::map<TString, std::vector<Double_t> > binArrsDouble; // Binning and range limits
 std::map<TString, bool> drawVar;                  // Plot this variable
 std::map<TString, bool> printVar;                 // Print this variable
 unsigned int nVars=0;
+// for gamma
+std::vector<TString> gammavariables;                   // All variables
+std::vector<TString> allGammaVarsToPlot;               // Variables to plot
+std::vector<TString> allGammaVarsToPrint;              // Variables to print
+std::map<TString, int> allGammaVarsToPrintBins;        // Map connecting the label-n.bin
+std::map<TString, TString> xGammaTitles;               // Variables to plot or print
+std::map<TString, TString> yGammaTitles;               // Variables to plot or print
+std::map<TString, unsigned int> binsGammaUInt;         // Binning and range limits
+std::map<TString, double> firstGammaBinsDouble;        // Binning and range limits
+std::map<TString, double> lastGammaBinsDouble;         // Binning and range limits
+std::map<TString, std::vector<Double_t> > binGammaArrsDouble; // Binning and range limits
+std::map<TString, bool> drawGammaVar;                  // Plot this variable
+std::map<TString, bool> printGammaVar;                 // Print this variable
+unsigned int nGammaVars=0;
+
 vector<double> puWeights;                         // Vector of weights for PU
 
 enum PhysicsChannels  { SINGLETOP_CH, TTBAR_CH, W_CH, WW_CH, Z_CH, ZZ_CH, WZ_CH, SIGNAL_CH };
@@ -86,28 +103,81 @@ void addVariable(TString newvar, TString newxtitle, TString newytitle, TString n
   return;
 }
 
-// For new macro - all variables to plot
-void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, double newFirstBin, double newLastBin, bool drawThis = true, bool printThis = true) {
+// For new macro - to allow for variable-sized bins
+void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, std::vector<Double_t> newBinsArr, bool drawThis = true, bool printThis = true) {
   variables.push_back(newvar);
   if(drawThis) allVarsToPlot.push_back(newvar);
-  if(printThis) allVarsToPrint.push_back(newvar);
+  if(printThis) {
+    allVarsToPrint.push_back(newvar);
+    allVarsToPrintBins[newvar] = allVarsToPrint.size();
+  }
   xTitles[newvar] = newxtitle;
   if(newytitle.Length()>0) 
     yTitles[newvar] = newytitle;
   else
     yTitles[newvar] = "Events/";
   binsUInt[newvar] = newBins;
-  firstBinsDouble[newvar] = newFirstBin;
-  lastBinsDouble[newvar] = newLastBin;
+  firstBinsDouble[newvar] = newBinsArr[0];
+  lastBinsDouble[newvar] = newBinsArr[newBins];
+  binArrsDouble[newvar] = newBinsArr;
   drawVar[newvar] = drawThis;
   printVar[newvar] = printThis;
   nVars=variables.size();
   return;
 }
 
+// For new macro - all variables to plot
+void addVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, double newFirstBin, double newLastBin, bool drawThis = true, bool printThis = true) {
+  unsigned int newBinsP1(newBins+1);
+  std::vector<Double_t> newBinsArray(newBinsP1, newLastBin);
+  Double_t deltaBin = (newLastBin-newFirstBin)/newBins;
+  for(unsigned int i=0; i<newBins; ++i) {   // N.B. newBins, not newBinsP1: last element already filled
+    newBinsArray[i] = newFirstBin + i*deltaBin; 
+  }
+  // Now call the other addVariable function
+  addVariable(newvar, newxtitle, newytitle, newBins, newBinsArray, drawThis, printThis);
+  return;
+}
+
 // For new macro - all variables to print (USELESS)
 void addPrintVariable(TString newvar2, TString newxtitle2, TString newytitle2, unsigned int newBins2, double newFirstBin2, double newLastBin2) {
   addVariable(newvar2, newxtitle2, newytitle2, newBins2, newFirstBin2, newLastBin2, false, true);
+  return;
+}
+
+// For new macro - to allow for variable-sized bins
+void addGammaVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, std::vector<Double_t> newBinsArr, bool drawThis = true, bool printThis = true) {
+  gammavariables.push_back(newvar);
+  if(drawThis) allGammaVarsToPlot.push_back(newvar);
+  if(printThis) {
+    allGammaVarsToPrint.push_back(newvar);
+    allGammaVarsToPrintBins[newvar] = allGammaVarsToPrint.size();    
+  }
+  xGammaTitles[newvar] = newxtitle;
+  if(newytitle.Length()>0) 
+    yGammaTitles[newvar] = newytitle;
+  else
+    yGammaTitles[newvar] = "Events/";
+  binsGammaUInt[newvar] = newBins;
+  firstGammaBinsDouble[newvar] = newBinsArr[0];
+  lastGammaBinsDouble[newvar] = newBinsArr[newBins];
+  binGammaArrsDouble[newvar] = newBinsArr;
+  drawGammaVar[newvar] = drawThis;
+  printGammaVar[newvar] = printThis;
+  nGammaVars=gammavariables.size();
+  return;
+}
+
+// For new macro - all variables to plot
+void addGammaVariable(TString newvar, TString newxtitle, TString newytitle, unsigned int newBins, double newFirstBin, double newLastBin, bool drawThis = true, bool printThis = true) {
+  unsigned int newBinsP1(newBins+1);
+  std::vector<Double_t> newBinsArray(newBinsP1, newLastBin);
+  Double_t deltaBin = (newLastBin-newFirstBin)/newBins;
+  for(unsigned int i=0; i<newBins; ++i) {   // N.B. newBins, not newBinsP1: last element already filled
+    newBinsArray[i] = newFirstBin + i*deltaBin; 
+  }
+  // Now call the other addGammaVariable function
+  addGammaVariable(newvar, newxtitle, newytitle, newBins, newBinsArray, drawThis, printThis);
   return;
 }
 
@@ -275,6 +345,29 @@ std::vector<UInt_t> getListOfParticlesWithPt(UInt_t nPart, Float_t *vPx, Float_t
   return listParts;
 }
 
+std::vector<UInt_t> getListOfParticlesWithThreshold(UInt_t npart, Float_t *valArr, Float_t thr, 
+						    Float_t *vPx = 0, Float_t *vPy = 0, Float_t *vPz = 0, 
+						    Float_t ptThr = 0., Float_t etaThr = 999., 
+						    Bool_t *vIdTight = 0) {
+
+  std::vector<UInt_t> listParts;
+
+  bool usePtThr(vPx!=0 && vPy!=0 && ptThr>0.);
+  bool useEtaThr(vPx!=0 && vPy!=0 && vPz!=0 && etaThr<990.);
+  bool useTightId(vIdTight!=0);
+
+  for(UInt_t k=0; k<npart; ++k) {
+    if( useTightId && vIdTight[k]==false ) continue; 
+    if( usePtThr && getPt(vPx[k], vPy[k])<ptThr ) continue;
+    if( useEtaThr && fabs(getEta(vPx[k], vPy[k], vPz[k]))>etaThr ) continue;
+    if( valArr[k]>thr ) {
+      listParts.push_back(k);
+    }
+  }
+
+  return listParts;
+}
+
 Float_t getMaxValue(UInt_t npart, Float_t *valArr, Int_t & pickedIdx, 
 		    Float_t *vPx = 0, Float_t *vPy = 0, Float_t *vPz = 0, 
 		    Float_t ptThr = 0., Float_t etaThr = 999., 
@@ -379,7 +472,8 @@ double csCosThetaAbs(float pt1, float eta1, float phi1, float charge1,
   double costheta = 2.0 / Q.Mag() / sqrt(pow(Q.Mag(), 2) + pow(Q.Pt(), 2)) * 
     (muplus * mubarminus - muminus * mubarplus);
 
-  return fabs(costheta);
+  //return fabs(costheta);
+  return costheta;
 
 }
 
@@ -479,6 +573,18 @@ double getDeltaPhi(float phi1, float phi2) {
 
   return deltaPhi;
 }
+
+// Delta R
+double getDeltaR(double px1, double py1, double pz1, 
+		 double px2, double py2, double pz2) {
+  double dPhi = getDeltaPhi(px1, py1, px2, py2);
+  double eta1 = getEta(px1, py1, pz1); 
+  double eta2 = getEta(px2, py2, pz2); 
+  double dEta = fabs(eta1-eta2);
+
+  return sqrt( dPhi*dPhi + dEta*dEta);
+}
+
 
 // Get particle closest in phi
 Float_t getParticleClosestInPhi(UInt_t npart1, Float_t *px1, Float_t *py1, Float_t phi2, Int_t & pickedIdx, Float_t ptThr = 0., Bool_t *jetIdTight1 = 0) {
@@ -1418,3 +1524,172 @@ int approxToN(double & xToApp, int nOrd, int def=-999) {
 
   return ordR;
 }
+
+
+Float_t getGammaWeights(Float_t gPt, int fsG, bool isMC) {
+  
+  // -------------------------------------
+  // Weights obtained with FULL selection
+  if( fsG==1 ) {
+    if( isMC ) {
+      if(gPt>=0 && gPt<10) return 0;
+      else if(gPt>=10 && gPt<20) return 0;
+      else if(gPt>=20 && gPt<30) return 0;
+      else if(gPt>=30 && gPt<40) return 0.00181017;
+      else if(gPt>=40 && gPt<50) return 0.0033243;
+      else if(gPt>=50 && gPt<60) return 0.00505512;
+      else if(gPt>=60 && gPt<75) return 0.00913715;
+      else if(gPt>=75 && gPt<90) return 0.0132855;
+      else if(gPt>=90 && gPt<110) return 0.0415776;
+      else if(gPt>=110 && gPt<125) return 0.0815322;
+      else if(gPt>=125 && gPt<135) return 0.0858615;
+      else if(gPt>=135 && gPt<150) return 0.0731303;
+      else if(gPt>=150 && gPt<200) return 0.0986739;
+      else if(gPt>=200 && gPt<250) return 0.12453;
+      else if(gPt>=250 && gPt<300) return 0.179839;
+      else if(gPt>=300 && gPt<400) return 0.0502023;
+    }
+
+    else {  // not isMC
+      if(gPt>=0 && gPt<10) return 0;
+      else if(gPt>=10 && gPt<20) return 0;
+      else if(gPt>=20 && gPt<30) return 0;
+      else if(gPt>=30 && gPt<40) return 1.09161;
+      else if(gPt>=40 && gPt<50) return 1.52739;
+      else if(gPt>=50 && gPt<60) return 0.319622;
+      else if(gPt>=60 && gPt<75) return 0.400474;
+      else if(gPt>=75 && gPt<90) return 0.145228;
+      else if(gPt>=90 && gPt<110) return 0.040201;
+      else if(gPt>=110 && gPt<125) return 0.0267857;
+      else if(gPt>=125 && gPt<135) return 0.0816327;
+      else if(gPt>=135 && gPt<150) return 0.0588235;
+      else if(gPt>=150 && gPt<200) return 0.0470588;
+      else if(gPt>=200 && gPt<250) return 0;
+      else if(gPt>=250 && gPt<300) return 0.25;
+      else if(gPt>=300 && gPt<400) return 0;
+    }
+  }
+
+  else if( fsG==2 ) {
+    if( isMC ) {
+      if(gPt>=0 && gPt<10) return 0;
+      else if(gPt>=10 && gPt<20) return 0;
+      else if(gPt>=20 && gPt<30) return 0;
+      else if(gPt>=30 && gPt<40) return 0.00100445;
+      else if(gPt>=40 && gPt<50) return 0.00182759;
+      else if(gPt>=50 && gPt<60) return 0.00281766;
+      else if(gPt>=60 && gPt<75) return 0.00508949;
+      else if(gPt>=75 && gPt<90) return 0.00872207;
+      else if(gPt>=90 && gPt<110) return 0.0287157;
+      else if(gPt>=110 && gPt<125) return 0.0530927;
+      else if(gPt>=125 && gPt<135) return 0.0562353;
+      else if(gPt>=135 && gPt<150) return 0.0426673;
+      else if(gPt>=150 && gPt<200) return 0.0872181;
+      else if(gPt>=200 && gPt<250) return 0.0823603;
+      else if(gPt>=250 && gPt<300) return 0.122668;
+      else if(gPt>=300 && gPt<400) return 0.0514368;
+    }
+
+    else {  // not isMC
+      if(gPt>=0 && gPt<10) return 0;
+      else if(gPt>=10 && gPt<20) return 0;
+      else if(gPt>=20 && gPt<30) return 0;
+      else if(gPt>=30 && gPt<40) return 0.619809;
+      else if(gPt>=40 && gPt<50) return 0.843318;
+      else if(gPt>=50 && gPt<60) return 0.175653;
+      else if(gPt>=60 && gPt<75) return 0.251185;
+      else if(gPt>=75 && gPt<90) return 0.0912863;
+      else if(gPt>=90 && gPt<110) return 0.0276382;
+      else if(gPt>=110 && gPt<125) return 0.0446429;
+      else if(gPt>=125 && gPt<135) return 0.0408163;
+      else if(gPt>=135 && gPt<150) return 0.0294118;
+      else if(gPt>=150 && gPt<200) return 0.0352941;
+      else if(gPt>=200 && gPt<250) return 0;
+      else if(gPt>=250 && gPt<300) return 0;
+      else if(gPt>=300 && gPt<400) return 0;
+    }
+  }
+
+  else 
+    return 1.; 
+
+  // Just to avoid warning in compilation (... end of non-void function...)
+  return 1.;
+
+ // mm
+ //   MC
+ //   else if(gPt>=0 && gPt<10) return 0;
+ //   else if(gPt>=10 && gPt<20) return 0;
+ //   else if(gPt>=20 && gPt<30) return 0;
+ //   else if(gPt>=30 && gPt<40) return 0.00180946;
+ //   else if(gPt>=40 && gPt<50) return 0.00331699;
+ //   else if(gPt>=50 && gPt<60) return 0.00500286;
+ //   else if(gPt>=60 && gPt<75) return 0.00877915;
+ //   else if(gPt>=75 && gPt<90) return 0.0115446;
+ //   else if(gPt>=90 && gPt<110) return 0.031515;
+ //   else if(gPt>=110 && gPt<125) return 0.0599035;
+ //   else if(gPt>=125 && gPt<135) return 0.0547567;
+ //   else if(gPt>=135 && gPt<150) return 0.0451656;
+ //   else if(gPt>=150 && gPt<200) return 0.0594215;
+ //   else if(gPt>=200 && gPt<250) return 0.0797293;
+ //   else if(gPt>=250 && gPt<300) return 0.104859;
+ //   else if(gPt>=300 && gPt<400) return 0.0359678;
+
+ //   Data
+ //   else if(gPt>=0 && gPt<10) return 0;
+ //   else if(gPt>=10 && gPt<20) return 0;
+ //   else if(gPt>=20 && gPt<30) return 0;
+ //   else if(gPt>=30 && gPt<40) return 1.09161;
+ //   else if(gPt>=40 && gPt<50) return 1.52739;
+ //   else if(gPt>=50 && gPt<60) return 0.319622;
+ //   else if(gPt>=60 && gPt<75) return 0.400474;
+ //   else if(gPt>=75 && gPt<90) return 0.145228;
+ //   else if(gPt>=90 && gPt<110) return 0.040201;
+ //   else if(gPt>=110 && gPt<125) return 0.0267857;
+ //   else if(gPt>=125 && gPt<135) return 0.0816327;
+ //   else if(gPt>=135 && gPt<150) return 0.0588235;
+ //   else if(gPt>=150 && gPt<200) return 0.0470588;
+ //   else if(gPt>=200 && gPt<250) return 0;
+ //   else if(gPt>=250 && gPt<300) return 0.25;
+ //   else if(gPt>=300 && gPt<400) return 0;
+
+ // ee
+ //   MC
+ //   else if(gPt>=0 && gPt<10) return 0;
+ //   else if(gPt>=10 && gPt<20) return 0;
+ //   else if(gPt>=20 && gPt<30) return 0;
+ //   else if(gPt>=30 && gPt<40) return 0.00100408;
+ //   else if(gPt>=40 && gPt<50) return 0.00182251;
+ //   else if(gPt>=50 && gPt<60) return 0.00278369;
+ //   else if(gPt>=60 && gPt<75) return 0.00486826;
+ //   else if(gPt>=75 && gPt<90) return 0.00753372;
+ //   else if(gPt>=90 && gPt<110) return 0.022484;
+ //   else if(gPt>=110 && gPt<125) return 0.0380857;
+ //   else if(gPt>=125 && gPt<135) return 0.0396396;
+ //   else if(gPt>=135 && gPt<150) return 0.0283571;
+ //   else if(gPt>=150 && gPt<200) return 0.0574001;
+ //   else if(gPt>=200 && gPt<250) return 0.0492779;
+ //   else if(gPt>=250 && gPt<300) return 0.0731026;
+ //   else if(gPt>=300 && gPt<400) return 0.0299476;
+
+ //   Data
+ //   else if(gPt>=0 && gPt<10) return 0;
+ //   else if(gPt>=10 && gPt<20) return 0;
+ //   else if(gPt>=20 && gPt<30) return 0;
+ //   else if(gPt>=30 && gPt<40) return 0.619809;
+ //   else if(gPt>=40 && gPt<50) return 0.843318;
+ //   else if(gPt>=50 && gPt<60) return 0.175653;
+ //   else if(gPt>=60 && gPt<75) return 0.251185;
+ //   else if(gPt>=75 && gPt<90) return 0.0912863;
+ //   else if(gPt>=90 && gPt<110) return 0.0276382;
+ //   else if(gPt>=110 && gPt<125) return 0.0446429;
+ //   else if(gPt>=125 && gPt<135) return 0.0408163;
+ //   else if(gPt>=135 && gPt<150) return 0.0294118;
+ //   else if(gPt>=150 && gPt<200) return 0.0352941;
+ //   else if(gPt>=200 && gPt<250) return 0;
+ //   else if(gPt>=250 && gPt<300) return 0;
+ //   else if(gPt>=300 && gPt<400) return 0;
+
+
+}
+
