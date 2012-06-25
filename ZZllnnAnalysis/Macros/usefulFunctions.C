@@ -10,6 +10,7 @@
 #include "TLorentzVector.h"
 #include "TLine.h"
 #include "TVector2.h"
+#include "TRandom.h"
 #include <iostream>
 #include <map>
 #include <sys/stat.h>
@@ -61,6 +62,10 @@ enum PhysicsChannels  { SINGLETOP_CH, TTBAR_CH, W_CH, WW_CH, Z_CH, ZZ_CH, WZ_CH,
 enum PhysicsObjects   { MET=0,JET=1,TOP=6,ELECTRON=11, MUON=13, TAU=15, GLUON=21, PHOTON=22, Z=23, W=24};
 enum DileptonChannels { UNKNOWN=0,MUMU=1,EE=2,EMU=3,ETAU=4,MUTAU=5, GAMMA=22};
 enum IsolType         { ECAL_ISO=0, HCAL_ISO, TRACKER_ISO, REL_ISO, RELRHOCORR_ISO, N_ISO, C_ISO, CPU_ISO, G_ISO, PFREL_ISO, PFRELBETCORR_ISO};
+
+// Photon trigger thresholds
+Int_t gammaTriggerThresholds[] = {20, 30, 50, 75, 90, 125, 135};
+Int_t nGammaTriggers = sizeof(gammaTriggerThresholds)/sizeof(Int_t); 
 
 //
 // Implementation of some necessary variables
@@ -252,6 +257,21 @@ double getTransMass(Double_t px1,  Double_t py1,  Double_t mass1,
   TVector2 tm2; tm2.SetMagPhi(mag2, phi2);
   Double_t pt1 = tm1.Mod();
   Double_t pt2 = mag2;
+  Double_t ptTot = (tm1+tm2).Mod();
+  Double_t etZ1 = sqrt( pt1*pt1 + mass1*mass1 );
+  Double_t etZ2 = sqrt( pt2*pt2 + mass2*mass2 );
+  Double_t etZZtot = etZ1+etZ2;
+  Double_t transverseMassZZ = sqrt(etZZtot*etZZtot - ptTot*ptTot);
+
+  return transverseMassZZ;
+}
+
+double getTransMassBis(Double_t px1, Double_t py1, Double_t mass1, 
+		       Double_t px2, Double_t py2, Double_t mass2 ) {
+  TVector2 tm1(px1, py1);
+  TVector2 tm2(px2, py2);
+  Double_t pt1 = tm1.Mod();
+  Double_t pt2 = tm1.Mod();
   Double_t ptTot = (tm1+tm2).Mod();
   Double_t etZ1 = sqrt( pt1*pt1 + mass1*mass1 );
   Double_t etZ2 = sqrt( pt2*pt2 + mass2*mass2 );
@@ -472,8 +492,8 @@ double csCosThetaAbs(float pt1, float eta1, float phi1, float charge1,
   double costheta = 2.0 / Q.Mag() / sqrt(pow(Q.Mag(), 2) + pow(Q.Pt(), 2)) * 
     (muplus * mubarminus - muminus * mubarplus);
 
-  //return fabs(costheta);
-  return costheta;
+  return fabs(costheta);
+  //  return costheta;
 
 }
 
@@ -1093,6 +1113,7 @@ double getCMSRedMet(double lpx1, double lpy1, double lpterr1,
 		    double lpx2, double lpy2, double lpterr2, 
 		    double sumjpx, double sumjpy, 
 		    double pfmet, double pfmetphi, 
+		    std::vector<double> & redMetComponents, 
 		    int flav, int pickAFlav = 1) {
 
   if( flav==3 ) { 
@@ -1182,17 +1203,23 @@ double getCMSRedMet(double lpx1, double lpy1, double lpterr1,
   // Dilepton
   double dileptProj_l = dil*longi;
   double dileptProj_t = dil*perpe;
+  redMetComponents[0] = dileptProj_l; 
+  redMetComponents[1] = dileptProj_t; 
 
   // Unclustered
   TVector2 uncl( pfmet*cos(pfmetphi), pfmet*sin(pfmetphi) );
   uncl += dil;
   double unclProj_l = uncl*longi;
   double unclProj_t = uncl*perpe;
+  redMetComponents[2] = unclProj_l; 
+  redMetComponents[3] = unclProj_t; 
 
   // Sum of jets
   TVector2 sumjVec(sumjpx, sumjpy);
   double sumjetProj_l = sumjVec*longi;
   double sumjetProj_t = sumjVec*perpe;
+  redMetComponents[4] = sumjetProj_l; 
+  redMetComponents[5] = sumjetProj_t; 
 
   // Recoil
   double recoilProj_l = min( sumjetProj_l, -1.0*unclProj_l ); recoilProj_l = min( 0., recoilProj_l );
@@ -1200,6 +1227,8 @@ double getCMSRedMet(double lpx1, double lpy1, double lpterr1,
   // Case with 0 jets
   // double recoilProj_l = -1.0*unclProj_l; recoilProj_l = min( 0., recoilProj_l );
   // double recoilProj_t = -1.0*unclProj_t; recoilProj_t = min( 0., recoilProj_t );
+  redMetComponents[6] = recoilProj_l; 
+  redMetComponents[7] = recoilProj_t; 
 
   // Lepton uncertainty
   double relErrLead = min( leadpterr/leadpt, 1. );
@@ -1211,6 +1240,8 @@ double getCMSRedMet(double lpx1, double lpy1, double lpterr1,
 
   double deltaDileptProj_t = lowDil*perpe - dileptProj_t;
   double deltaDileptProj_l = ( -relErrLead*lead + relErrSubl*subl )*longi;
+  redMetComponents[8] = deltaDileptProj_l; 
+  redMetComponents[9] = deltaDileptProj_t; 
 
   // D0 version
   // double redMET_l = max( (dileptProj_l + kRecoil_l*recoilProj_l + kSigmaPt_l*deltaDileptProj_l), 0.);
@@ -1225,6 +1256,9 @@ double getCMSRedMet(double lpx1, double lpy1, double lpterr1,
 
   float redMetMin_l = ( fabs(redMetWithJets_l)<fabs(redMetWithMet_l) ?  redMetWithJets_l : redMetWithMet_l );
   float redMetMin_t = ( fabs(redMetWithJets_t)<fabs(redMetWithMet_t) ?  redMetWithJets_t : redMetWithMet_t );
+
+  redMetComponents[10] = redMetMin_l; 
+  redMetComponents[11] = redMetMin_t; 
 
   return sqrt( redMetMin_l*redMetMin_l + kPerp*redMetMin_t*redMetMin_t ); 
 }
@@ -1532,81 +1566,130 @@ Float_t getGammaWeights(Float_t gPt, int fsG, bool isMC) {
   // Weights obtained with FULL selection
   if( fsG==1 ) {
     if( isMC ) {
+      // Looser selection
       if(gPt>=0 && gPt<10) return 0;
       else if(gPt>=10 && gPt<20) return 0;
       else if(gPt>=20 && gPt<30) return 0;
-      else if(gPt>=30 && gPt<40) return 0.00181017;
-      else if(gPt>=40 && gPt<50) return 0.0033243;
-      else if(gPt>=50 && gPt<60) return 0.00505512;
-      else if(gPt>=60 && gPt<75) return 0.00913715;
-      else if(gPt>=75 && gPt<90) return 0.0132855;
-      else if(gPt>=90 && gPt<110) return 0.0415776;
-      else if(gPt>=110 && gPt<125) return 0.0815322;
-      else if(gPt>=125 && gPt<135) return 0.0858615;
-      else if(gPt>=135 && gPt<150) return 0.0731303;
-      else if(gPt>=150 && gPt<200) return 0.0986739;
-      else if(gPt>=200 && gPt<250) return 0.12453;
-      else if(gPt>=250 && gPt<300) return 0.179839;
-      else if(gPt>=300 && gPt<400) return 0.0502023;
+      else if(gPt>=30 && gPt<40) return 0.00207765;
+      else if(gPt>=40 && gPt<50) return 0.00353553;
+      else if(gPt>=50 && gPt<60) return 0.00513398;
+      else if(gPt>=60 && gPt<75) return 0.00880332;
+      else if(gPt>=75 && gPt<90) return 0.0110226;
+      else if(gPt>=90 && gPt<110) return 0.0127741;
+      else if(gPt>=110 && gPt<125) return 0.0182822;
+      else if(gPt>=125 && gPt<135) return 0;
+      else if(gPt>=135 && gPt<150) return 0.0197593;
+      else if(gPt>=150 && gPt<200) return 0.0204061;
+      else if(gPt>=200 && gPt<250) return 0.0288512;
+      else if(gPt>=250 && gPt<300) return 0.0176122;
+      else if(gPt>=300 && gPt<400) return 0.052948;
+      else return 0.;
+
+      // // Full selection
+      // if(gPt>=0 && gPt<10) return 0;
+      // else if(gPt>=10 && gPt<20) return 0;
+      // else if(gPt>=20 && gPt<30) return 0;
+      // else if(gPt>=30 && gPt<40) return 0.0018893;
+      // else if(gPt>=40 && gPt<50) return 0.00378326;
+      // else if(gPt>=50 && gPt<60) return 0.00614828;
+      // else if(gPt>=60 && gPt<75) return 0.0103756;
+      // else if(gPt>=75 && gPt<90) return 0.0134411;
+      // else if(gPt>=90 && gPt<110) return 0.0347094;
+      // else if(gPt>=110 && gPt<125) return 0.0420932;
+      // else if(gPt>=125 && gPt<135) return 0;
+      // else if(gPt>=135 && gPt<150) return 0.0464383;
+      // else if(gPt>=150 && gPt<200) return 0.0507531;
+      // else if(gPt>=200 && gPt<250) return 0.112088;
+      // else if(gPt>=250 && gPt<300) return 0.0964272;
+      // else if(gPt>=300 && gPt<400) return 0.0490627;
+      // else return 0.;
     }
 
     else {  // not isMC
+      // Looser selection
       if(gPt>=0 && gPt<10) return 0;
       else if(gPt>=10 && gPt<20) return 0;
       else if(gPt>=20 && gPt<30) return 0;
-      else if(gPt>=30 && gPt<40) return 1.09161;
-      else if(gPt>=40 && gPt<50) return 1.52739;
-      else if(gPt>=50 && gPt<60) return 0.319622;
-      else if(gPt>=60 && gPt<75) return 0.400474;
-      else if(gPt>=75 && gPt<90) return 0.145228;
-      else if(gPt>=90 && gPt<110) return 0.040201;
-      else if(gPt>=110 && gPt<125) return 0.0267857;
-      else if(gPt>=125 && gPt<135) return 0.0816327;
-      else if(gPt>=135 && gPt<150) return 0.0588235;
-      else if(gPt>=150 && gPt<200) return 0.0470588;
-      else if(gPt>=200 && gPt<250) return 0;
-      else if(gPt>=250 && gPt<300) return 0.25;
-      else if(gPt>=300 && gPt<400) return 0;
-    }
+      else if(gPt>=30 && gPt<40) return 1.48793;
+      else if(gPt>=40 && gPt<50) return 2.23412;
+      else if(gPt>=50 && gPt<60) return 0.395502;
+      else if(gPt>=60 && gPt<75) return 0.42289;
+      else if(gPt>=75 && gPt<90) return 0.101041;
+      else if(gPt>=90 && gPt<110) return 0.023582;
+      else if(gPt>=110 && gPt<125) return 0.0230243;
+      else if(gPt>=125 && gPt<135) return 0.2;
+      else if(gPt>=135 && gPt<150) return 0.039604;
+      else if(gPt>=150 && gPt<200) return 0.0336323;
+      else if(gPt>=200 && gPt<250) return 0.0298507;
+      else if(gPt>=250 && gPt<300) return 0.0588235;
+      else if(gPt>=300 && gPt<400) return 0.0714286;
+      else return 0.;
+
+      // // Full selection
+      // if(gPt>=0 && gPt<10) return 0;
+      // else if(gPt>=10 && gPt<20) return 0;
+      // else if(gPt>=20 && gPt<30) return 0;
+      // else if(gPt>=30 && gPt<40) return 1.41821;
+      // else if(gPt>=40 && gPt<50) return 1.99265;
+      // else if(gPt>=50 && gPt<60) return 0.360954;
+      // else if(gPt>=60 && gPt<75) return 0.455526;
+      // else if(gPt>=75 && gPt<90) return 0.165877;
+      // else if(gPt>=90 && gPt<110) return 0.0433604;
+      // else if(gPt>=110 && gPt<125) return 0.0283019;
+      // else if(gPt>=125 && gPt<135) return 0.4;
+      // else if(gPt>=135 && gPt<150) return 0.105263;
+      // else if(gPt>=150 && gPt<200) return 0.057971;
+      // else if(gPt>=200 && gPt<250) return 0;
+      // else if(gPt>=250 && gPt<300) return 0.5;
+      // else if(gPt>=300 && gPt<400) return 0;
+    } // 
   }
 
-  else if( fsG==2 ) {
+  else if( fsG==2 ) { 
     if( isMC ) {
+      // Looser selection
       if(gPt>=0 && gPt<10) return 0;
       else if(gPt>=10 && gPt<20) return 0;
       else if(gPt>=20 && gPt<30) return 0;
-      else if(gPt>=30 && gPt<40) return 0.00100445;
-      else if(gPt>=40 && gPt<50) return 0.00182759;
-      else if(gPt>=50 && gPt<60) return 0.00281766;
-      else if(gPt>=60 && gPt<75) return 0.00508949;
-      else if(gPt>=75 && gPt<90) return 0.00872207;
-      else if(gPt>=90 && gPt<110) return 0.0287157;
-      else if(gPt>=110 && gPt<125) return 0.0530927;
-      else if(gPt>=125 && gPt<135) return 0.0562353;
-      else if(gPt>=135 && gPt<150) return 0.0426673;
-      else if(gPt>=150 && gPt<200) return 0.0872181;
-      else if(gPt>=200 && gPt<250) return 0.0823603;
-      else if(gPt>=250 && gPt<300) return 0.122668;
-      else if(gPt>=300 && gPt<400) return 0.0514368;
+      else if(gPt>=30 && gPt<40) return 0.00118526;
+      else if(gPt>=40 && gPt<50) return 0.00198571;
+      else if(gPt>=50 && gPt<60) return 0.0029629;
+      else if(gPt>=60 && gPt<75) return 0.00529315;
+      else if(gPt>=75 && gPt<90) return 0.0063946;
+      else if(gPt>=90 && gPt<110) return 0.00835454;
+      else if(gPt>=110 && gPt<125) return 0.0110808;
+      else if(gPt>=125 && gPt<135) return 0;
+      else if(gPt>=135 && gPt<150) return 0.0180062;
+      else if(gPt>=150 && gPt<200) return 0.019502;
+      else if(gPt>=200 && gPt<250) return 0.0325624;
+      else if(gPt>=250 && gPt<300) return 0.0128168;
+      else if(gPt>=300 && gPt<400) return 0.0484245;
+      else return 0.;
+
+      // Full selection
     }
 
     else {  // not isMC
+      // Looser selection
       if(gPt>=0 && gPt<10) return 0;
       else if(gPt>=10 && gPt<20) return 0;
       else if(gPt>=20 && gPt<30) return 0;
-      else if(gPt>=30 && gPt<40) return 0.619809;
-      else if(gPt>=40 && gPt<50) return 0.843318;
-      else if(gPt>=50 && gPt<60) return 0.175653;
-      else if(gPt>=60 && gPt<75) return 0.251185;
-      else if(gPt>=75 && gPt<90) return 0.0912863;
-      else if(gPt>=90 && gPt<110) return 0.0276382;
-      else if(gPt>=110 && gPt<125) return 0.0446429;
-      else if(gPt>=125 && gPt<135) return 0.0408163;
-      else if(gPt>=135 && gPt<150) return 0.0294118;
-      else if(gPt>=150 && gPt<200) return 0.0352941;
-      else if(gPt>=200 && gPt<250) return 0;
+      else if(gPt>=30 && gPt<40) return 0.849098;
+      else if(gPt>=40 && gPt<50) return 1.27094;
+      else if(gPt>=50 && gPt<60) return 0.220891;
+      else if(gPt>=60 && gPt<75) return 0.269595;
+      else if(gPt>=75 && gPt<90) return 0.0643635;
+      else if(gPt>=90 && gPt<110) return 0.0172626;
+      else if(gPt>=110 && gPt<125) return 0.0192906;
+      else if(gPt>=125 && gPt<135) return 0.146667;
+      else if(gPt>=135 && gPt<150) return 0.0231023;
+      else if(gPt>=150 && gPt<200) return 0.0201794;
+      else if(gPt>=200 && gPt<250) return 0.0447761;
       else if(gPt>=250 && gPt<300) return 0;
       else if(gPt>=300 && gPt<400) return 0;
+      else return 0.;
+
+      // Full selection
     }
   }
 
@@ -1615,81 +1698,368 @@ Float_t getGammaWeights(Float_t gPt, int fsG, bool isMC) {
 
   // Just to avoid warning in compilation (... end of non-void function...)
   return 1.;
-
- // mm
- //   MC
- //   else if(gPt>=0 && gPt<10) return 0;
- //   else if(gPt>=10 && gPt<20) return 0;
- //   else if(gPt>=20 && gPt<30) return 0;
- //   else if(gPt>=30 && gPt<40) return 0.00180946;
- //   else if(gPt>=40 && gPt<50) return 0.00331699;
- //   else if(gPt>=50 && gPt<60) return 0.00500286;
- //   else if(gPt>=60 && gPt<75) return 0.00877915;
- //   else if(gPt>=75 && gPt<90) return 0.0115446;
- //   else if(gPt>=90 && gPt<110) return 0.031515;
- //   else if(gPt>=110 && gPt<125) return 0.0599035;
- //   else if(gPt>=125 && gPt<135) return 0.0547567;
- //   else if(gPt>=135 && gPt<150) return 0.0451656;
- //   else if(gPt>=150 && gPt<200) return 0.0594215;
- //   else if(gPt>=200 && gPt<250) return 0.0797293;
- //   else if(gPt>=250 && gPt<300) return 0.104859;
- //   else if(gPt>=300 && gPt<400) return 0.0359678;
-
- //   Data
- //   else if(gPt>=0 && gPt<10) return 0;
- //   else if(gPt>=10 && gPt<20) return 0;
- //   else if(gPt>=20 && gPt<30) return 0;
- //   else if(gPt>=30 && gPt<40) return 1.09161;
- //   else if(gPt>=40 && gPt<50) return 1.52739;
- //   else if(gPt>=50 && gPt<60) return 0.319622;
- //   else if(gPt>=60 && gPt<75) return 0.400474;
- //   else if(gPt>=75 && gPt<90) return 0.145228;
- //   else if(gPt>=90 && gPt<110) return 0.040201;
- //   else if(gPt>=110 && gPt<125) return 0.0267857;
- //   else if(gPt>=125 && gPt<135) return 0.0816327;
- //   else if(gPt>=135 && gPt<150) return 0.0588235;
- //   else if(gPt>=150 && gPt<200) return 0.0470588;
- //   else if(gPt>=200 && gPt<250) return 0;
- //   else if(gPt>=250 && gPt<300) return 0.25;
- //   else if(gPt>=300 && gPt<400) return 0;
-
- // ee
- //   MC
- //   else if(gPt>=0 && gPt<10) return 0;
- //   else if(gPt>=10 && gPt<20) return 0;
- //   else if(gPt>=20 && gPt<30) return 0;
- //   else if(gPt>=30 && gPt<40) return 0.00100408;
- //   else if(gPt>=40 && gPt<50) return 0.00182251;
- //   else if(gPt>=50 && gPt<60) return 0.00278369;
- //   else if(gPt>=60 && gPt<75) return 0.00486826;
- //   else if(gPt>=75 && gPt<90) return 0.00753372;
- //   else if(gPt>=90 && gPt<110) return 0.022484;
- //   else if(gPt>=110 && gPt<125) return 0.0380857;
- //   else if(gPt>=125 && gPt<135) return 0.0396396;
- //   else if(gPt>=135 && gPt<150) return 0.0283571;
- //   else if(gPt>=150 && gPt<200) return 0.0574001;
- //   else if(gPt>=200 && gPt<250) return 0.0492779;
- //   else if(gPt>=250 && gPt<300) return 0.0731026;
- //   else if(gPt>=300 && gPt<400) return 0.0299476;
-
- //   Data
- //   else if(gPt>=0 && gPt<10) return 0;
- //   else if(gPt>=10 && gPt<20) return 0;
- //   else if(gPt>=20 && gPt<30) return 0;
- //   else if(gPt>=30 && gPt<40) return 0.619809;
- //   else if(gPt>=40 && gPt<50) return 0.843318;
- //   else if(gPt>=50 && gPt<60) return 0.175653;
- //   else if(gPt>=60 && gPt<75) return 0.251185;
- //   else if(gPt>=75 && gPt<90) return 0.0912863;
- //   else if(gPt>=90 && gPt<110) return 0.0276382;
- //   else if(gPt>=110 && gPt<125) return 0.0446429;
- //   else if(gPt>=125 && gPt<135) return 0.0408163;
- //   else if(gPt>=135 && gPt<150) return 0.0294118;
- //   else if(gPt>=150 && gPt<200) return 0.0352941;
- //   else if(gPt>=200 && gPt<250) return 0;
- //   else if(gPt>=250 && gPt<300) return 0;
- //   else if(gPt>=300 && gPt<400) return 0;
+}
 
 
+Float_t getGammaVtxWeights(Int_t gNvtx, int fsG, bool isMC) {
+  
+  // -------------------------------------
+  // Weights obtained with FULL selection
+  if( fsG==1 ) {
+    if( isMC ) {
+      // Looser selection
+      if(gNvtx>=0.5 && gNvtx<1.5) return 1.08144;
+      else if(gNvtx>=1.5 && gNvtx<2.5) return 1.05322;
+      else if(gNvtx>=2.5 && gNvtx<3.5) return 0.818494;
+      else if(gNvtx>=3.5 && gNvtx<4.5) return 1.03423;
+      else if(gNvtx>=4.5 && gNvtx<5.5) return 0.922056;
+      else if(gNvtx>=5.5 && gNvtx<6.5) return 1.06256;
+      else if(gNvtx>=6.5 && gNvtx<7.5) return 1.03755;
+      else if(gNvtx>=7.5 && gNvtx<8.5) return 1.05746;
+      else if(gNvtx>=8.5 && gNvtx<9.5) return 1.05685;
+      else if(gNvtx>=9.5 && gNvtx<10.5) return 0.963537;
+      else if(gNvtx>=10.5 && gNvtx<11.5) return 0.916307;
+      else if(gNvtx>=11.5 && gNvtx<12.5) return 1.11028;
+      else if(gNvtx>=12.5 && gNvtx<13.5) return 0.755048;
+      else if(gNvtx>=13.5 && gNvtx<14.5) return 1.14374;
+      else if(gNvtx>=14.5 && gNvtx<15.5) return 1.18184;
+      else if(gNvtx>=15.5 && gNvtx<16.5) return 1.24568;
+      else if(gNvtx>=16.5 && gNvtx<17.5) return 1.26234;
+      else if(gNvtx>=17.5 && gNvtx<18.5) return 1.3744;
+      else if(gNvtx>=18.5 && gNvtx<19.5) return 1.50947;
+      else if(gNvtx>=19.5 && gNvtx<20.5) return 1.48261;
+      else if(gNvtx>=20.5 && gNvtx<21.5) return 1.66049;
+      else if(gNvtx>=21.5 && gNvtx<22.5) return 0.905141;
+      else if(gNvtx>=22.5 && gNvtx<23.5) return 2.37651;
+      else if(gNvtx>=23.5 && gNvtx<24.5) return 2.28488;
+      else if(gNvtx>=24.5 && gNvtx<25.5) return 2.77696;
+      else if(gNvtx>=25.5 && gNvtx<26.5) return 3.16165;
+      else if(gNvtx>=26.5 && gNvtx<27.5) return 9.56034;
+      else if(gNvtx>=27.5 && gNvtx<28.5) return 8.94898;
+      else if(gNvtx>=28.5 && gNvtx<29.5) return 30.7347;
+      else if(gNvtx>=29.5 && gNvtx<30.5) return 88.5001;
+      // else if(gNvtx>=30.5 && gNvtx<31.5) return 0;
+      // else if(gNvtx>=31.5 && gNvtx<32.5) return 0;
+      // else if(gNvtx>=32.5 && gNvtx<33.5) return 0;
+      // else if(gNvtx>=33.5 && gNvtx<34.5) return 0.00895449;
+      // else if(gNvtx>=34.5 && gNvtx<35.5) return 13036.6;
+      // else if(gNvtx>=35.5 && gNvtx<36.5) return 0;
+      // else if(gNvtx>=36.5 && gNvtx<37.5) return 0;
+      // else if(gNvtx>=37.5 && gNvtx<38.5) return 0;
+      // else if(gNvtx>=38.5 && gNvtx<39.5) return 0.0223762;
+      // else if(gNvtx>=39.5 && gNvtx<40.5) return 0;
+      // else if(gNvtx>=40.5 && gNvtx<41.5) return 0;
+      // else if(gNvtx>=41.5 && gNvtx<42.5) return 0;
+      // else if(gNvtx>=42.5 && gNvtx<43.5) return 0;
+      // else if(gNvtx>=43.5 && gNvtx<44.5) return 0;
+      // else if(gNvtx>=44.5 && gNvtx<45.5) return 0;
+      // else if(gNvtx>=45.5 && gNvtx<46.5) return 0;
+      // else if(gNvtx>=46.5 && gNvtx<47.5) return 0;
+      // else if(gNvtx>=47.5 && gNvtx<48.5) return 0;
+      // else if(gNvtx>=48.5 && gNvtx<49.5) return 0;
+      // else if(gNvtx>=49.5 && gNvtx<50.5) return 0;
+      else return 0.;
+
+      // // Full selection
+      // if(gNvtx>=0.5 && gNvtx<1.5) return 1.09204;
+      // else if(gNvtx>=1.5 && gNvtx<2.5) return 0.958151;
+      // else if(gNvtx>=2.5 && gNvtx<3.5) return 0.952189;
+      // else if(gNvtx>=3.5 && gNvtx<4.5) return 1.06116;
+      // else if(gNvtx>=4.5 && gNvtx<5.5) return 0.651782;
+      // else if(gNvtx>=5.5 && gNvtx<6.5) return 0.988607;
+      // else if(gNvtx>=6.5 && gNvtx<7.5) return 1.05949;
+      // else if(gNvtx>=7.5 && gNvtx<8.5) return 1.04422;
+      // else if(gNvtx>=8.5 && gNvtx<9.5) return 1.04668;
+      // else if(gNvtx>=9.5 && gNvtx<10.5) return 1.05235;
+      // else if(gNvtx>=10.5 && gNvtx<11.5) return 1.03583;
+      // else if(gNvtx>=11.5 && gNvtx<12.5) return 1.07186;
+      // else if(gNvtx>=12.5 && gNvtx<13.5) return 1.1394;
+      // else if(gNvtx>=13.5 && gNvtx<14.5) return 1.16171;
+      // else if(gNvtx>=14.5 && gNvtx<15.5) return 1.1682;
+      // else if(gNvtx>=15.5 && gNvtx<16.5) return 1.17238;
+      // else if(gNvtx>=16.5 && gNvtx<17.5) return 1.25015;
+      // else if(gNvtx>=17.5 && gNvtx<18.5) return 1.38209;
+      // else if(gNvtx>=18.5 && gNvtx<19.5) return 1.50387;
+      // else if(gNvtx>=19.5 && gNvtx<20.5) return 1.39667;
+      // else if(gNvtx>=20.5 && gNvtx<21.5) return 1.71592;
+      // else if(gNvtx>=21.5 && gNvtx<22.5) return 1.63429;
+      // else if(gNvtx>=22.5 && gNvtx<23.5) return 3.07823;
+      // else if(gNvtx>=23.5 && gNvtx<24.5) return 2.9104;
+      // else if(gNvtx>=24.5 && gNvtx<25.5) return 2.37464;
+      // else if(gNvtx>=25.5 && gNvtx<26.5) return 4.36692;
+      // else if(gNvtx>=26.5 && gNvtx<27.5) return 6.52337;
+      // else if(gNvtx>=27.5 && gNvtx<28.5) return 6.05573;
+      // else if(gNvtx>=28.5 && gNvtx<29.5) return 23.2921;
+      // else if(gNvtx>=29.5 && gNvtx<30.5) return 8080.32;
+      // else if(gNvtx>=30.5 && gNvtx<31.5) return 0;
+      // else if(gNvtx>=31.5 && gNvtx<32.5) return 0;
+      // else if(gNvtx>=32.5 && gNvtx<33.5) return 0;
+      // else if(gNvtx>=33.5 && gNvtx<34.5) return 0;
+      // else if(gNvtx>=34.5 && gNvtx<35.5) return 0;
+      // else if(gNvtx>=35.5 && gNvtx<36.5) return 0;
+      // else if(gNvtx>=36.5 && gNvtx<37.5) return 0;
+      // else if(gNvtx>=37.5 && gNvtx<38.5) return 0;
+      // else if(gNvtx>=38.5 && gNvtx<39.5) return 0;
+      // else if(gNvtx>=39.5 && gNvtx<40.5) return 0;
+      // else if(gNvtx>=40.5 && gNvtx<41.5) return 0;
+      // else if(gNvtx>=41.5 && gNvtx<42.5) return 0;
+      // else if(gNvtx>=42.5 && gNvtx<43.5) return 0;
+      // else if(gNvtx>=43.5 && gNvtx<44.5) return 0;
+      // else if(gNvtx>=44.5 && gNvtx<45.5) return 0;
+      // else if(gNvtx>=45.5 && gNvtx<46.5) return 0;
+      // else if(gNvtx>=46.5 && gNvtx<47.5) return 0;
+      // else if(gNvtx>=47.5 && gNvtx<48.5) return 0;
+      // else if(gNvtx>=48.5 && gNvtx<49.5) return 0;
+      // else if(gNvtx>=49.5 && gNvtx<50.5) return 0;
+      // else return 0.;
+    }
+
+    else {  // not isMC
+      // Looser selection
+      if(gNvtx>=0.5 && gNvtx<1.5) return 0.636604;
+      else if(gNvtx>=1.5 && gNvtx<2.5) return 0.614882;
+      else if(gNvtx>=2.5 && gNvtx<3.5) return 0.631784;
+      else if(gNvtx>=3.5 && gNvtx<4.5) return 0.72167;
+      else if(gNvtx>=4.5 && gNvtx<5.5) return 0.787105;
+      else if(gNvtx>=5.5 && gNvtx<6.5) return 0.883637;
+      else if(gNvtx>=6.5 && gNvtx<7.5) return 1.08107;
+      else if(gNvtx>=7.5 && gNvtx<8.5) return 1.2824;
+      else if(gNvtx>=8.5 && gNvtx<9.5) return 1.44326;
+      else if(gNvtx>=9.5 && gNvtx<10.5) return 1.69962;
+      else if(gNvtx>=10.5 && gNvtx<11.5) return 1.88103;
+      else if(gNvtx>=11.5 && gNvtx<12.5) return 2.03089;
+      else if(gNvtx>=12.5 && gNvtx<13.5) return 2.10423;
+      else if(gNvtx>=13.5 && gNvtx<14.5) return 2.36072;
+      else if(gNvtx>=14.5 && gNvtx<15.5) return 2.51061;
+      else if(gNvtx>=15.5 && gNvtx<16.5) return 2.55116;
+      else if(gNvtx>=16.5 && gNvtx<17.5) return 2.54968;
+      else if(gNvtx>=17.5 && gNvtx<18.5) return 2.73502;
+      else if(gNvtx>=18.5 && gNvtx<19.5) return 2.963;
+      else if(gNvtx>=19.5 && gNvtx<20.5) return 4.48184;
+      else if(gNvtx>=20.5 && gNvtx<21.5) return 1.08369;
+      else if(gNvtx>=21.5 && gNvtx<22.5) return 1.58176;
+      else if(gNvtx>=22.5 && gNvtx<23.5) return 0.790737;
+      else if(gNvtx>=23.5 && gNvtx<24.5) return 0.212926;
+      else if(gNvtx>=24.5 && gNvtx<25.5) return 42.4052;
+      else if(gNvtx>=25.5 && gNvtx<26.5) return 0;
+      else if(gNvtx>=26.5 && gNvtx<27.5) return 0;
+      else if(gNvtx>=27.5 && gNvtx<28.5) return 0;
+      else if(gNvtx>=28.5 && gNvtx<29.5) return 0;
+      else if(gNvtx>=29.5 && gNvtx<30.5) return 0;
+      // else if(gNvtx>=30.5 && gNvtx<31.5) return 0;
+      // else if(gNvtx>=31.5 && gNvtx<32.5) return 0;
+      // else if(gNvtx>=32.5 && gNvtx<33.5) return 0;
+      // else if(gNvtx>=33.5 && gNvtx<34.5) return 0;
+      // else if(gNvtx>=34.5 && gNvtx<35.5) return 0;
+      // else if(gNvtx>=35.5 && gNvtx<36.5) return 0;
+      // else if(gNvtx>=36.5 && gNvtx<37.5) return 0;
+      // else if(gNvtx>=37.5 && gNvtx<38.5) return 0;
+      // else if(gNvtx>=38.5 && gNvtx<39.5) return 0;
+      // else if(gNvtx>=39.5 && gNvtx<40.5) return 0;
+      // else if(gNvtx>=40.5 && gNvtx<41.5) return 0;
+      // else if(gNvtx>=41.5 && gNvtx<42.5) return 0;
+      // else if(gNvtx>=42.5 && gNvtx<43.5) return 0;
+      // else if(gNvtx>=43.5 && gNvtx<44.5) return 0;
+      // else if(gNvtx>=44.5 && gNvtx<45.5) return 0;
+      // else if(gNvtx>=45.5 && gNvtx<46.5) return 0;
+      // else if(gNvtx>=46.5 && gNvtx<47.5) return 0;
+      // else if(gNvtx>=47.5 && gNvtx<48.5) return 0;
+      // else if(gNvtx>=48.5 && gNvtx<49.5) return 0;
+      // else if(gNvtx>=49.5 && gNvtx<50.5) return 0;
+      else return 0;
+
+      // // Full selection
+      // if(gNvtx>=0.5 && gNvtx<1.5) return 0.692902;
+      // else if(gNvtx>=1.5 && gNvtx<2.5) return 0.680781;
+      // else if(gNvtx>=2.5 && gNvtx<3.5) return 0.645501;
+      // else if(gNvtx>=3.5 && gNvtx<4.5) return 0.76071;
+      // else if(gNvtx>=4.5 && gNvtx<5.5) return 0.77363;
+      // else if(gNvtx>=5.5 && gNvtx<6.5) return 0.808195;
+      // else if(gNvtx>=6.5 && gNvtx<7.5) return 1.01475;
+      // else if(gNvtx>=7.5 && gNvtx<8.5) return 1.18956;
+      // else if(gNvtx>=8.5 && gNvtx<9.5) return 1.30612;
+      // else if(gNvtx>=9.5 && gNvtx<10.5) return 1.44538;
+      // else if(gNvtx>=10.5 && gNvtx<11.5) return 1.65268;
+      // else if(gNvtx>=11.5 && gNvtx<12.5) return 1.72387;
+      // else if(gNvtx>=12.5 && gNvtx<13.5) return 1.86147;
+      // else if(gNvtx>=13.5 && gNvtx<14.5) return 1.92533;
+      // else if(gNvtx>=14.5 && gNvtx<15.5) return 2.03085;
+      // else if(gNvtx>=15.5 && gNvtx<16.5) return 1.67411;
+      // else if(gNvtx>=16.5 && gNvtx<17.5) return 1.53696;
+      // else if(gNvtx>=17.5 && gNvtx<18.5) return 2.30423;
+      // else if(gNvtx>=18.5 && gNvtx<19.5) return 1.62315;
+      // else if(gNvtx>=19.5 && gNvtx<20.5) return 7.7143;
+      // else if(gNvtx>=20.5 && gNvtx<21.5) return 0.404116;
+      // else if(gNvtx>=21.5 && gNvtx<22.5) return 0.476899;
+      // else if(gNvtx>=22.5 && gNvtx<23.5) return 0;
+      // else if(gNvtx>=23.5 && gNvtx<24.5) return 0;
+      // else if(gNvtx>=24.5 && gNvtx<25.5) return 0;
+      // else if(gNvtx>=25.5 && gNvtx<26.5) return 0;
+      // else if(gNvtx>=26.5 && gNvtx<27.5) return 0;
+      // else if(gNvtx>=27.5 && gNvtx<28.5) return 0;
+      // else if(gNvtx>=28.5 && gNvtx<29.5) return 0;
+      // else if(gNvtx>=29.5 && gNvtx<30.5) return 0;
+      // else if(gNvtx>=30.5 && gNvtx<31.5) return 0;
+      // else if(gNvtx>=31.5 && gNvtx<32.5) return 0;
+      // else if(gNvtx>=32.5 && gNvtx<33.5) return 0;
+      // else if(gNvtx>=33.5 && gNvtx<34.5) return 0;
+      // else if(gNvtx>=34.5 && gNvtx<35.5) return 0;
+      // else if(gNvtx>=35.5 && gNvtx<36.5) return 0;
+      // else if(gNvtx>=36.5 && gNvtx<37.5) return 0;
+      // else if(gNvtx>=37.5 && gNvtx<38.5) return 0;
+      // else if(gNvtx>=38.5 && gNvtx<39.5) return 0;
+      // else if(gNvtx>=39.5 && gNvtx<40.5) return 0;
+      // else if(gNvtx>=40.5 && gNvtx<41.5) return 0;
+      // else if(gNvtx>=41.5 && gNvtx<42.5) return 0;
+      // else if(gNvtx>=42.5 && gNvtx<43.5) return 0;
+      // else if(gNvtx>=43.5 && gNvtx<44.5) return 0;
+      // else if(gNvtx>=44.5 && gNvtx<45.5) return 0;
+      // else if(gNvtx>=45.5 && gNvtx<46.5) return 0;
+      // else if(gNvtx>=46.5 && gNvtx<47.5) return 0;
+      // else if(gNvtx>=47.5 && gNvtx<48.5) return 0;
+      // else if(gNvtx>=48.5 && gNvtx<49.5) return 0;
+      // else if(gNvtx>=49.5 && gNvtx<50.5) return 0;
+      // else return 0;
+    }
+  }
+
+  else if( fsG==2 ) {
+    if( isMC ) {
+      // Looser selection
+      if(gNvtx>=0.5 && gNvtx<1.5) return 1.27695;
+      else if(gNvtx>=1.5 && gNvtx<2.5) return 1.21132;
+      else if(gNvtx>=2.5 && gNvtx<3.5) return 0.933716;
+      else if(gNvtx>=3.5 && gNvtx<4.5) return 1.13199;
+      else if(gNvtx>=4.5 && gNvtx<5.5) return 1.00089;
+      else if(gNvtx>=5.5 && gNvtx<6.5) return 1.12641;
+      else if(gNvtx>=6.5 && gNvtx<7.5) return 1.05567;
+      else if(gNvtx>=7.5 && gNvtx<8.5) return 1.03284;
+      else if(gNvtx>=8.5 && gNvtx<9.5) return 1.01863;
+      else if(gNvtx>=9.5 && gNvtx<10.5) return 0.885952;
+      else if(gNvtx>=10.5 && gNvtx<11.5) return 0.836366;
+      else if(gNvtx>=11.5 && gNvtx<12.5) return 0.960906;
+      else if(gNvtx>=12.5 && gNvtx<13.5) return 0.638278;
+      else if(gNvtx>=13.5 && gNvtx<14.5) return 0.89993;
+      else if(gNvtx>=14.5 && gNvtx<15.5) return 0.936932;
+      else if(gNvtx>=15.5 && gNvtx<16.5) return 0.886647;
+      else if(gNvtx>=16.5 && gNvtx<17.5) return 0.934004;
+      else if(gNvtx>=17.5 && gNvtx<18.5) return 0.90987;
+      else if(gNvtx>=18.5 && gNvtx<19.5) return 0.948757;
+      else if(gNvtx>=19.5 && gNvtx<20.5) return 0.989373;
+      else if(gNvtx>=20.5 && gNvtx<21.5) return 1.00148;
+      else if(gNvtx>=21.5 && gNvtx<22.5) return 0.582249;
+      else if(gNvtx>=22.5 && gNvtx<23.5) return 1.06474;
+      else if(gNvtx>=23.5 && gNvtx<24.5) return 1.14368;
+      else if(gNvtx>=24.5 && gNvtx<25.5) return 1.42629;
+      else if(gNvtx>=25.5 && gNvtx<26.5) return 1.70159;
+      else if(gNvtx>=26.5 && gNvtx<27.5) return 3.81449;
+      else if(gNvtx>=27.5 && gNvtx<28.5) return 3.09014;
+      else if(gNvtx>=28.5 && gNvtx<29.5) return 5.68612;
+      else if(gNvtx>=29.5 && gNvtx<30.5) return 28.1541;
+      // else if(gNvtx>=30.5 && gNvtx<31.5) return 0;
+      // else if(gNvtx>=31.5 && gNvtx<32.5) return 0;
+      // else if(gNvtx>=32.5 && gNvtx<33.5) return 0;
+      // else if(gNvtx>=33.5 && gNvtx<34.5) return 0;
+      // else if(gNvtx>=34.5 && gNvtx<35.5) return 0;
+      // else if(gNvtx>=35.5 && gNvtx<36.5) return 0;
+      // else if(gNvtx>=36.5 && gNvtx<37.5) return 0;
+      // else if(gNvtx>=37.5 && gNvtx<38.5) return 0;
+      // else if(gNvtx>=38.5 && gNvtx<39.5) return 0;
+      // else if(gNvtx>=39.5 && gNvtx<40.5) return 0;
+      // else if(gNvtx>=40.5 && gNvtx<41.5) return 0;
+      // else if(gNvtx>=41.5 && gNvtx<42.5) return 0;
+      // else if(gNvtx>=42.5 && gNvtx<43.5) return 0;
+      // else if(gNvtx>=43.5 && gNvtx<44.5) return 0;
+      // else if(gNvtx>=44.5 && gNvtx<45.5) return 0;
+      // else if(gNvtx>=45.5 && gNvtx<46.5) return 0;
+      // else if(gNvtx>=46.5 && gNvtx<47.5) return 0;
+      // else if(gNvtx>=47.5 && gNvtx<48.5) return 0;
+      // else if(gNvtx>=48.5 && gNvtx<49.5) return 0;
+      // else if(gNvtx>=49.5 && gNvtx<50.5) return 0;
+      else return 0;
+
+      // Full selection
+    }
+
+    else {  // not isMC
+      // Looser selection
+      if(gNvtx>=0.5 && gNvtx<1.5) return 0.720432;
+      else if(gNvtx>=1.5 && gNvtx<2.5) return 0.706363;
+      else if(gNvtx>=2.5 && gNvtx<3.5) return 0.729035;
+      else if(gNvtx>=3.5 && gNvtx<4.5) return 0.779149;
+      else if(gNvtx>=4.5 && gNvtx<5.5) return 0.857304;
+      else if(gNvtx>=5.5 && gNvtx<6.5) return 0.913492;
+      else if(gNvtx>=6.5 && gNvtx<7.5) return 1.08;
+      else if(gNvtx>=7.5 && gNvtx<8.5) return 1.24059;
+      else if(gNvtx>=8.5 && gNvtx<9.5) return 1.33424;
+      else if(gNvtx>=9.5 && gNvtx<10.5) return 1.48077;
+      else if(gNvtx>=10.5 && gNvtx<11.5) return 1.58229;
+      else if(gNvtx>=11.5 && gNvtx<12.5) return 1.67157;
+      else if(gNvtx>=12.5 && gNvtx<13.5) return 1.87544;
+      else if(gNvtx>=13.5 && gNvtx<14.5) return 2.03372;
+      else if(gNvtx>=14.5 && gNvtx<15.5) return 2.04017;
+      else if(gNvtx>=15.5 && gNvtx<16.5) return 2.03115;
+      else if(gNvtx>=16.5 && gNvtx<17.5) return 2.24509;
+      else if(gNvtx>=17.5 && gNvtx<18.5) return 2.22581;
+      else if(gNvtx>=18.5 && gNvtx<19.5) return 2.91315;
+      else if(gNvtx>=19.5 && gNvtx<20.5) return 2.64654;
+      else if(gNvtx>=20.5 && gNvtx<21.5) return 1.40608;
+      else if(gNvtx>=21.5 && gNvtx<22.5) return 1.14612;
+      else if(gNvtx>=22.5 && gNvtx<23.5) return 0.460365;
+      else if(gNvtx>=23.5 && gNvtx<24.5) return 0.370828;
+      else if(gNvtx>=24.5 && gNvtx<25.5) return 173.786;
+      else if(gNvtx>=25.5 && gNvtx<26.5) return 0;
+      else if(gNvtx>=26.5 && gNvtx<27.5) return 0;
+      else if(gNvtx>=27.5 && gNvtx<28.5) return 0;
+      else if(gNvtx>=28.5 && gNvtx<29.5) return 0;
+      else if(gNvtx>=29.5 && gNvtx<30.5) return 0;
+      // else if(gNvtx>=30.5 && gNvtx<31.5) return 0;
+      // else if(gNvtx>=31.5 && gNvtx<32.5) return 0;
+      // else if(gNvtx>=32.5 && gNvtx<33.5) return 0;
+      // else if(gNvtx>=33.5 && gNvtx<34.5) return 0;
+      // else if(gNvtx>=34.5 && gNvtx<35.5) return 0;
+      // else if(gNvtx>=35.5 && gNvtx<36.5) return 0;
+      // else if(gNvtx>=36.5 && gNvtx<37.5) return 0;
+      // else if(gNvtx>=37.5 && gNvtx<38.5) return 0;
+      // else if(gNvtx>=38.5 && gNvtx<39.5) return 0;
+      // else if(gNvtx>=39.5 && gNvtx<40.5) return 0;
+      // else if(gNvtx>=40.5 && gNvtx<41.5) return 0;
+      // else if(gNvtx>=41.5 && gNvtx<42.5) return 0;
+      // else if(gNvtx>=42.5 && gNvtx<43.5) return 0;
+      // else if(gNvtx>=43.5 && gNvtx<44.5) return 0;
+      // else if(gNvtx>=44.5 && gNvtx<45.5) return 0;
+      // else if(gNvtx>=45.5 && gNvtx<46.5) return 0;
+      // else if(gNvtx>=46.5 && gNvtx<47.5) return 0;
+      // else if(gNvtx>=47.5 && gNvtx<48.5) return 0;
+      // else if(gNvtx>=48.5 && gNvtx<49.5) return 0;
+      // else if(gNvtx>=49.5 && gNvtx<50.5) return 0;
+      else return 0;
+
+      // Full selection
+    }
+  }
+
+  else 
+    return 1.; 
+
+  // Just to avoid warning in compilation (... end of non-void function...)
+  return 1.;
+}
+
+double jetSmearingFactor(Double_t genJetPt, Double_t recJetPt, Double_t recJetEta) {
+  if(genJetPt<=0) return 1.0;
+
+  Double_t eta = fabs(recJetEta);
+  Double_t ptSF(1.0), ptSF_err(0.06);
+  if(eta<0.5)                  { ptSF = 1.066; ptSF_err = sqrt( pow(0.007, 2) + pow( 0.5*(0.07+0.072), 2) ); }
+  else if(eta>=0.5 && eta<1.7) { ptSF = 1.191; ptSF_err = sqrt( pow(0.019, 2) + pow( 0.5*(0.06+0.062), 2) ); }
+  else if(eta>=1.7 && eta<2.3) { ptSF = 1.096; ptSF_err = sqrt( pow(0.030, 2) + pow( 0.5*(0.08+0.085), 2) ); }
+  else if(eta>=2.3 && eta<5.0) { ptSF = 1.166; ptSF_err = sqrt( pow(0.050, 2) + pow( 0.5*(0.19+0.199), 2) ); }
+  else {}
+
+  ptSF = max( 0., (genJetPt + gRandom->Gaus(ptSF, ptSF_err)*(recJetPt-genJetPt)) ) / genJetPt; 
+  if(ptSF<=0) return 1.0;
+    
+  return ptSF; 
 }
 

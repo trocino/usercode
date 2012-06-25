@@ -38,7 +38,7 @@ using namespace std;
 // 
 // Function to fill plots
 // 
-void fillPlots(std::map<TString, TH1F*> &, TString, double wght = 1.0);
+void fillPlots(std::map<TString, TH1F*> &, TString, double wght = 1.0, double puWght = -1.0);
 void printEvents(std::map<int, TString> &, 
 		 std::map<TString, TH1F*> &, unsigned int, TString *,
 		 std::map<TString, TH1F*> &, unsigned int, TString *, bool, 
@@ -61,7 +61,7 @@ void nonres_dileptonMetAnalysis() {
 
   // Set name of output folder 
   TDatime tdt;
-  TString outputfolder("plots_nonres_");
+  TString outputfolder("nonres_plots_");
   outputfolder += tdt.GetYear();
   outputfolder += "-";
   TString tmpstr; tmpstr += tdt.GetMonth(); if( tmpstr.Length()==1 ) tmpstr.Prepend("0"); outputfolder += tmpstr; 
@@ -80,7 +80,8 @@ void nonres_dileptonMetAnalysis() {
 
   // Samples location
   //TString indir="/home/daniele/Documents/Work/samples/2012-03-26_cmgTrees";
-  TString indir="/home/daniele/Documents/Work/samples/2012-04-03_cmgTrees";
+  //TString indir="/home/daniele/Documents/Work/samples/2012-04-03_cmgTrees";
+  TString indir="/home/daniele/Documents/Work/samples/2012-05-14_trees";
   TString basename_mc="MC_";
   TString basename_dt="Data_";
   TString base_mc=indir+"/"+basename_mc;
@@ -143,6 +144,30 @@ void nonres_dileptonMetAnalysis() {
     return;
   }
 
+  // Correction factors for PU re-weighting, process by process
+  // zz	        CF = (77686 +- 278.722) / (78867.3 +- 304.917) = 0.985022 +- 0.00519546
+  // wz	        CF = (205335 +- 453.139) / (208323 +- 494.938) = 0.985657 +- 0.00319611
+  // ww	        CF = (172559 +- 415.402) / (176613 +- 458.705) = 0.977047 +- 0.00346001
+  // tt	        CF = (98733 +- 314.218) / (101587 +- 348.506) = 0.971905 +- 0.00454799
+  // t	        CF = (96185 +- 310.137) / (99457 +- 343.772) = 0.967101 +- 0.00457143
+  // zzx	CF = (111301 +- 333.618) / (113072 +- 363.994) = 0.984336 +- 0.00432967
+  // w	        CF = (449812 +- 670.68) / (483117 +- 763.878) = 0.931061 +- 0.00202346
+  // z	        CF = (6.697e+06 +- 2587.86) / (6.90884e+06 +- 2847.21) = 0.969338 +- 0.000547617
+  // zh105	CF = (15114 +- 122.939) / (15511.4 +- 136.691) = 0.974381 +- 0.0116853
+  // zh115	CF = (15646 +- 125.084) / (15911.9 +- 135.785) = 0.98329 +- 0.011498
+  // zh125	CF = (15403 +- 124.109) / (15713.3 +- 136.341) = 0.980251 +- 0.0116071
+  // zh150	CF = (15917 +- 126.163) / (16212.4 +- 139.321) = 0.981777 +- 0.0114777
+  // 
+  // {"zh105", "zh115", "zh125", "zh150", "zz", "wz", "ww", "tt", "t_s", "tbar_s", "t_t", "tbar_t", "t_tw", "tbar_tw", "zzx", "w", "z"};
+  double puCorrFact[] = {0.974381, 0.98329, 0.980251, 0.981777, 0.985022, 0.985657, 0.977047, 0.971905, 0.967101, 0.967101, 0.967101, 0.967101, 0.967101, 0.967101, 0.984336, 0.931061, 0.979652};
+  unsigned int nPuCorrFact = sizeof(puCorrFact)/sizeof(double);
+  if( nPuCorrFact != nSmps ) {
+    std::cout << " *************************** ERROR ***************************" << endl;
+    std::cout << "    Number of PU corr. factors != number of samples! Check!"    << std::endl;
+    return;
+  }
+
+
   // Colors and marker styles, process by process
   Color_t cols[]={kBlack, kBlack, kBlack, kBlack, kRed, kMagenta, kViolet-1, kBlue, kCyan, kCyan, kCyan, kCyan, kCyan, kCyan, kGreen, kSpring+3, kYellow-7};
   Style_t mrks[]={25, 25, 25, 25, 21, 22, 23, 24, 25, 25, 25, 25, 25, 25, 26, 27, 28, 29, 30, 31, 32};
@@ -187,10 +212,12 @@ void nonres_dileptonMetAnalysis() {
   // Maps associating each process to its tree, color, marker and line style
   std::map<TString, std::vector<TString> > allfiles;
   std::map<TString, TChain*> alltrees;
+  std::map<TString, TChain*> alldatatrees;
   std::map<TString, double>  allgenev;
   std::map<TString, std::vector<double> >  allpileups;
   std::map<TString, double>  allxsect;
   std::map<TString, double>  allbrfra;
+  std::map<TString, double>  allpucfs;
   std::map<TString, Color_t> allcols;
   std::map<TString, Style_t> allmrks;
   std::map<TString, Style_t> alllines;
@@ -207,11 +234,11 @@ void nonres_dileptonMetAnalysis() {
   allfiles["t_tw"].push_back(base_mc+"SingleT_tW.root"); allfiles["tbar_tw"].push_back(base_mc+"SingleTbar_tW.root");
   allfiles["t_t"].push_back(base_mc+"SingleT_t.root");   allfiles["tbar_t"].push_back(base_mc+"SingleTbar_t.root");
   allfiles["t_s"].push_back(base_mc+"SingleT_s.root");   allfiles["tbar_s"].push_back(base_mc+"SingleTbar_s.root");
-  allfiles["zzx"].push_back(base_mc+"ZZ_0.root"); allfiles["zz"].push_back(base_mc+"ZZ_1.root");
+  allfiles["zzx"].push_back(base_mc+"ZZ_0.root"); allfiles["zzx"].push_back(base_mc+"ZZ_1.root");
   allfiles["w"].push_back(base_mc+"WJetsToLNu.root"); 
-  // allfiles["z"].push_back(base_mc+"DYJetsToLL_0.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_1.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_2.root"); 
-  // allfiles["z"].push_back(base_mc+"DYJetsToLL_3.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_4.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_5.root"); 
-  // allfiles["z"].push_back(base_mc+"DYJetsToLL_6.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_7.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_8.root"); 
+  allfiles["z"].push_back(base_mc+"DYJetsToLL_0.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_1.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_2.root"); 
+  allfiles["z"].push_back(base_mc+"DYJetsToLL_3.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_4.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_5.root"); 
+  allfiles["z"].push_back(base_mc+"DYJetsToLL_6.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_7.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_8.root"); 
   allfiles["z"].push_back(base_mc+"DYJetsToLL_9.root"); 
 
   for(unsigned int k=0; k<nSmps; ++k) {
@@ -253,6 +280,10 @@ void nonres_dileptonMetAnalysis() {
     allbrfra[alllabels[k]]=brFra[k];
 
     // ---------------------------
+    // Fill maps with PU correction factors
+    allpucfs[alllabels[k]]=puCorrFact[k];
+
+    // ---------------------------
     // Fill maps with colors
     allcols[alllabels[k]]=cols[k];
 
@@ -265,18 +296,31 @@ void nonres_dileptonMetAnalysis() {
     alllines[alllabels[k]]=lines[k];
   }
 
-  // Data samples
-  TChain *t_data=new TChain("evAnalyzer/data");
-  // DoubleMu
-  t_data->Add(base_dt+"DoubleMu2011A_0.root"); t_data->Add(base_dt+"DoubleMu2011A_1.root"); 
-  t_data->Add(base_dt+"DoubleMu2011B_0.root"); t_data->Add(base_dt+"DoubleMu2011B_1.root"); 
-  // // DoubleElectron
-  t_data->Add(base_dt+"DoubleElectron2011A_0.root"); t_data->Add(base_dt+"DoubleElectron2011A_1.root"); 
-  t_data->Add(base_dt+"DoubleElectron2011B_0.root"); t_data->Add(base_dt+"DoubleElectron2011B_1.root"); 
-  // // MuUG
-  t_data->Add(base_dt+"MuEG2011A_0.root"); t_data->Add(base_dt+"MuEG2011A_1.root"); 
-  t_data->Add(base_dt+"MuEG2011B_0.root"); t_data->Add(base_dt+"MuEG2011B_1.root"); 
+  // // Data samples
+  // TChain *t_data=new TChain("evAnalyzer/data");
+  // // DoubleMu
+  // t_data->Add(base_dt+"DoubleMu2011A_0.root"); t_data->Add(base_dt+"DoubleMu2011A_1.root"); 
+  // t_data->Add(base_dt+"DoubleMu2011B_0.root"); t_data->Add(base_dt+"DoubleMu2011B_1.root"); 
+  // // // DoubleElectron
+  // t_data->Add(base_dt+"DoubleElectron2011A_0.root"); t_data->Add(base_dt+"DoubleElectron2011A_1.root"); 
+  // t_data->Add(base_dt+"DoubleElectron2011B_0.root"); t_data->Add(base_dt+"DoubleElectron2011B_1.root"); 
+  // // // MuUG
+  // t_data->Add(base_dt+"MuEG2011A_0.root"); t_data->Add(base_dt+"MuEG2011A_1.root"); 
+  // t_data->Add(base_dt+"MuEG2011B_0.root"); t_data->Add(base_dt+"MuEG2011B_1.root"); 
 
+  // Data samples
+  // DoubleMu
+  alldatatrees["mm"] = new TChain("evAnalyzer/data");
+  alldatatrees["mm"]->Add(base_dt+"DoubleMu2011A_0.root"); alldatatrees["mm"]->Add(base_dt+"DoubleMu2011A_1.root"); 
+  alldatatrees["mm"]->Add(base_dt+"DoubleMu2011B_0.root"); alldatatrees["mm"]->Add(base_dt+"DoubleMu2011B_1.root"); 
+  // DoubleElectron
+  alldatatrees["ee"] = new TChain("evAnalyzer/data");
+  alldatatrees["ee"]->Add(base_dt+"DoubleElectron2011A_0.root"); alldatatrees["ee"]->Add(base_dt+"DoubleElectron2011A_1.root"); 
+  alldatatrees["ee"]->Add(base_dt+"DoubleElectron2011B_0.root"); alldatatrees["ee"]->Add(base_dt+"DoubleElectron2011B_1.root"); 
+  // MuEG
+  alldatatrees["em"] = new TChain("evAnalyzer/data");
+  alldatatrees["em"]->Add(base_dt+"MuEG2011A_0.root"); alldatatrees["em"]->Add(base_dt+"MuEG2011A_1.root"); 
+  alldatatrees["em"]->Add(base_dt+"MuEG2011B_0.root"); alldatatrees["em"]->Add(base_dt+"MuEG2011B_1.root"); 
 
   //
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -315,14 +359,26 @@ void nonres_dileptonMetAnalysis() {
   addVariable( "extraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         false, false );
 
   // For non resonant background
-  addVariable( "dileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "",  6, 60.,   120.,        true,  false );
-  addVariable( "dileptMassPeak",    "Dilepton invariant mass [GeV/c^{2}]",      "",  1,  0.,     2.,        false, true  );
-  addVariable( "dileptMassSide",    "Dilepton invariant mass [GeV/c^{2}]",      "",  1,  0.,     2.,        false, true  );
+  addVariable( "dileptMass",          "Dilepton invariant mass [GeV/c^{2}]",      "",  15, 50. ,   200.,      true,  false );
+  addVariable( "dileptMassAlpha",     "Dilepton invariant mass [GeV/c^{2}]",      "",  15, 50. ,   200.,      true,  false );
+
+  addVariable( "dileptMetTransMass",        "Dilepton-MET transverse mass [GeV/c^{2}]",     "",  20, 0. , 200., true, false );
+  addVariable( "dileptMetTransMassAlpha",   "Dilepton-MET transverse mass [GeV/c^{2}]",     "",  20, 0. , 200., true, false );
+  addVariable( "leadLMetTransMass",         "Leading l-MET transverse mass [GeV/c^{2}]",    "",  20, 0. , 200., true, false );
+  addVariable( "leadLMetTransMassAlpha",    "Leading l-MET transverse mass [GeV/c^{2}]",    "",  20, 0. , 200., true, false );
+  addVariable( "subleadLMetTransMass",      "Subleading l-MET transverse mass [GeV/c^{2}]", "",  20, 0. , 200., true, false );
+  addVariable( "subleadLMetTransMassAlpha", "Subleading l-MET transverse mass [GeV/c^{2}]", "",  20, 0. , 200., true, false );
+
+  addVariable( "dileptMassPeak",      "Dilepton invariant mass [GeV/c^{2}]",      "",  1,  0.,     2.,        false, true  );
+  addVariable( "dileptMassSide",      "Dilepton invariant mass [GeV/c^{2}]",      "",  1,  0.,     2.,        false, true  );
+  addVariable( "dileptMassPeakAlpha", "Dilepton invariant mass [GeV/c^{2}]",      "",  1,  0.,     2.,        false, true  );
+  addVariable( "dileptMassSideAlpha", "Dilepton invariant mass [GeV/c^{2}]",      "",  1,  0.,     2.,        false, true  );
 
   unsigned int numberCuts = allVarsToPrint.size();
 
   // One extra plots: the cut-flow
-  addVariable( "cutFlow", "", "Events", numberCuts, 0., float(numberCuts), true, false );
+  if(numberCuts>0)
+    addVariable( "cutFlow", "", "Events", numberCuts, 0.5, float(numberCuts)+0.5, true, false );
 
   //
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -474,7 +530,7 @@ void nonres_dileptonMetAnalysis() {
 	attachToTree(alltrees[alllabelstouse[j]]);
 
 	// General weight
-	float genWeight = intLumi * allxsect[alllabelstouse[j]] * allbrfra[alllabelstouse[j]] / allgenev[alllabelstouse[j]];
+	float genWeight = intLumi * allxsect[alllabelstouse[j]] * allbrfra[alllabelstouse[j]] * allpucfs[alllabelstouse[j]] / allgenev[alllabelstouse[j]];
 
 	// 
 	// Loop over events
@@ -496,7 +552,9 @@ void nonres_dileptonMetAnalysis() {
 	    }
 	  }
 
-	  if( finalStates.count(cat)>0 ) {
+	  // if( finalStates.count(cat)>0 &&     // one of the chosen categories (1: mm; 2: ee; 3: em)
+	  //     l1_id * l2_id < 0          ) {  // same charge
+	  if( finalStates.count(cat)>0 ) {  // one of the chosen categories (1: mm; 2: ee; 3: em)
 
 	    TString plotIdx = plotname+finalStates[cat]+"_";
 	    // Event weight
@@ -584,7 +642,7 @@ void nonres_dileptonMetAnalysis() {
 	attachToTree(alltrees[allhiggslabelstouse[j]]);
 
 	// General weight
-	float genWeight = intLumi * allxsect[allhiggslabelstouse[j]] * allbrfra[allhiggslabelstouse[j]] / allgenev[allhiggslabelstouse[j]];
+	float genWeight = intLumi * allxsect[allhiggslabelstouse[j]] * allbrfra[allhiggslabelstouse[j]] * allpucfs[allhiggslabelstouse[j]] / allgenev[allhiggslabelstouse[j]];
 
 	// 
 	// Loop over events
@@ -592,6 +650,8 @@ void nonres_dileptonMetAnalysis() {
 	for(unsigned int iEvt=0; iEvt<nEvt; ++iEvt) {
 	  alltrees[allhiggslabelstouse[j]]->GetEntry(iEvt);
 
+	  // if( finalStates.count(cat)>0 &&     // one of the chosen categories (1: mm; 2: ee; 3: em)
+	  //     l1_id * l2_id < 0          ) {  // same charge
 	  if( finalStates.count(cat)>0 ) {
 
 	    TString plotIdx = plotname+finalStates[cat]+"_";
@@ -642,20 +702,30 @@ void nonres_dileptonMetAnalysis() {
 	}
       }
 
-      initializeTreeVariables();
-      attachToTree(t_data);
+      // initializeTreeVariables();
+      // attachToTree(t_data);
 
-      unsigned int nEvt = t_data->GetEntries();
-      std::cout << " - data " << nEvt << std::endl;
+      // unsigned int nEvt = t_data->GetEntries();
+      // std::cout << " - data " << nEvt << std::endl;
 
       // 
       // Loop over events
       // 
-      for(unsigned int iEvt=0; iEvt<nEvt; ++iEvt) {
-	t_data->GetEntry(iEvt);
+      for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat) {
+	TChain *this_t_data = alldatatrees[(finStat->second).Data()];
+	initializeTreeVariables();
+	attachToTree( this_t_data );
 
-	if( finalStates.count(cat)>0 ) {
-	  TString plotIdx = "h_data_"+finalStates[cat]+"_";
+	unsigned int nEvt = this_t_data->GetEntries();
+	std::cout << " - data (" << (finStat->second).Data() << ") " << nEvt << std::endl;
+
+	TString plotIdx = "h_data_"+finStat->second+"_";
+
+	for(unsigned int iEvt=0; iEvt<nEvt; ++iEvt) {
+	  this_t_data->GetEntry(iEvt);
+	  // if(cat != finStat->first &&
+	  //    l1_id * l2_id > 0       ) continue; 
+	  if(cat != finStat->first) continue; 
 	  fillPlots(alldatahistos, plotIdx, 1.0);
 	}
       }
@@ -726,7 +796,17 @@ void nonres_dileptonMetAnalysis() {
 	// Axis, labels & Co.
 	if(yTitles[*varsToPlot].EndsWith("Events/")) {
 	  double onebin = ( lastBinsDouble[*varsToPlot] - firstBinsDouble[*varsToPlot] ) / binsUInt[*varsToPlot];
+	  approxToN(onebin, 0, -2);
 	  yTitles[*varsToPlot] += onebin;
+	  if( yTitles[*varsToPlot].Length()>15 ) {
+	    int lastFigIdx = yTitles[*varsToPlot].Length()-1;
+	    char lastFig = (yTitles[*varsToPlot].Data())[lastFigIdx]; 
+	    char lastBut1Fig = (yTitles[*varsToPlot].Data())[lastFigIdx-1]; 
+	    TString lastBut1FigStr(lastBut1Fig);
+	    yTitles[*varsToPlot] = yTitles[*varsToPlot].Strip(TString::kTrailing, lastFig);
+	    while( yTitles[*varsToPlot].EndsWith(lastBut1FigStr.Data()) ) 
+	      yTitles[*varsToPlot] = yTitles[*varsToPlot].Strip(TString::kTrailing, lastBut1Fig);
+	  }
 	  TString unit = xTitles[*varsToPlot]( xTitles[*varsToPlot].Index("[")+1, ( xTitles[*varsToPlot].Index("]")-xTitles[*varsToPlot].Index("[")-1 ) );
 	  if(unit.Length()>0) {
 	    unit.Prepend(" ");
@@ -836,18 +916,13 @@ void nonres_dileptonMetAnalysis() {
 	  // Save plots
 	  
 	  allcanvas[fsAndVar]->SaveAs( (outputfolder+"/"+allcanvas[fsAndVar]->GetName()+".png").Data() );
-	  allcanvas[fsAndVar]->SaveAs( (outputfolder+"/"+allcanvas[fsAndVar]->GetName()+".C").Data() );
+	  allcanvas[fsAndVar]->SaveAs( (outputfolder+"/"+allcanvas[fsAndVar]->GetName()+".root").Data() );
 
 	} // end for(std::vector<TString>::iterator varsToPlot = allVarsToPlot.begin(); varsToPlot!=allVarsToPlot.end(); ++varsToPlot)
       } // end for(std::map<int, TString>::iterator finStat = finalStates.begin(); finStat!=finalStates.end(); ++finStat)
     } // end if(drawData)
 
-    // 
-    // Print out result of WW+top measurement
-    // 
-    printNonResonantBackgrounds( allmchistos, alldatahistos );
 
-    // TEMPORARILY AFTER...
     if(doCutTable) {
       printEvents(finalStates, 
 		  allhiggshistos, nHiggsSmpsToUse, allhiggslabelstouse,
@@ -855,6 +930,11 @@ void nonres_dileptonMetAnalysis() {
 		  allmchistos, 
 		  alldatahistos);
     }
+
+    // 
+    // Print out result of WW+top measurement
+    // 
+    printNonResonantBackgrounds( allmchistos, alldatahistos );
 
   } // end if(doPlot)
 
@@ -866,7 +946,10 @@ void nonres_dileptonMetAnalysis() {
 }
 
 
-void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) {
+void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght, double puWght) {
+
+  bool isMC( nmcparticles>0 ); 
+  if(puWght<0.) puWght = wght;
 
   // //           Variable             Title X                                     Y   N    x0     xN           Plot   Print
   // addVariable( "dileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "", 60,  60.,   120.,        true,  true  );
@@ -888,75 +971,192 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght) 
   // histos[plotlab+"dileptMass"]->Fill(thismass, wght);
   // if( fabs(thismass-91.1876)>15. ) return;
   // //if( fabs(thismass-91.1876)>10. ) return;
-  // histos[plotlab+"cutFlow"]->Fill("dileptMass", wght);
+  // if( allVarsToPrintBins.count("dileptMass")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["dileptMass"]), wght);
+
+  // Energy corrections for electrons
+  if( isMC==false && cat==2) {
+    double enCorr1 = en_corren[l1_pid]/l1_en; if(enCorr1==0) enCorr1 = 1.0;
+    double enCorr2 = en_corren[l2_pid]/l2_en; if(enCorr2==0) enCorr2 = 1.0;
+
+    l1_px *= enCorr1; l1_py *= enCorr1; l1_pz *= enCorr1; l1_en *= enCorr1; 
+    l2_px *= enCorr2; l2_py *= enCorr2; l2_pz *= enCorr2; l2_en *= enCorr2; 
+  }
 
   // Z pt > 30
   Float_t zPt = getPt(l1_px+l2_px, l1_py+l2_py);
   histos[plotlab+"dileptPt"]->Fill(zPt, wght);
-  if(zPt<30.) return;
-  histos[plotlab+"cutFlow"]->Fill("dileptPt", wght);
+  bool zPtBool(zPt>30.);
+  if(zPtBool)
+    if( allVarsToPrintBins.count("dileptPt")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["dileptPt"]), wght);
+
+  // Jets: pt>15, tightId
+  Int_t use_jn = 0;
+  vector<Float_t> useV_jn_px;
+  vector<Float_t> useV_jn_py;
+  vector<Float_t> useV_jn_pz;
+  vector<Float_t> useV_jn_btag2;
+  vector<Bool_t> useV_jn_tightId;
+  Float_t use_htvec_px = 0.;
+  Float_t use_htvec_py = 0.;
+
+  for(int jdx=0; jdx<jnum; ++jdx) {
+    double j_pt = getPt(jn_px[jdx], jn_py[jdx]); 
+    double j_eta = getEta(jn_px[jdx], jn_py[jdx], jn_pz[jdx]); 
+    double jetCorrSF = jetSmearingFactor( jn_genpt[jdx], j_pt, j_eta ); 
+    if( isMC==false ) jetCorrSF = 1.0; 
+    if( jetCorrSF*j_pt<15. || jn_tightId[jdx]==0 ) continue;
+
+    use_jn += 1;
+    useV_jn_px.push_back(jn_px[jdx]);
+    useV_jn_py.push_back(jn_py[jdx]);
+    useV_jn_pz.push_back(jn_pz[jdx]);
+    useV_jn_btag2.push_back(jn_btag2[jdx]);
+    useV_jn_tightId.push_back(jn_tightId[jdx]);
+    use_htvec_px += jn_px[jdx]; 
+    use_htvec_py += jn_py[jdx]; 
+  }
+  // Float_t *use_jn_px = &(useV_jn_px[0]);
+  // Float_t *use_jn_py = &(useV_jn_py[0]);
+  // Float_t *use_jn_pz = &(useV_jn_pz[0]);
+  // Float_t *use_jn_btag2 = &(useV_jn_btag2[0]);
+  // Bool_t *use_jn_tightId = &(useV_jn_tightId[0]);
+  const int const_jn(use_jn);
+  Float_t use_jn_px[const_jn];
+  Float_t use_jn_py[const_jn];
+  Float_t use_jn_pz[const_jn];
+  Float_t use_jn_btag2[const_jn];
+  Bool_t use_jn_tightId[const_jn];
+  for(int h=0; h<const_jn; ++h) { 
+    use_jn_px[h] = useV_jn_px[h];
+    use_jn_py[h] = useV_jn_py[h];
+    use_jn_pz[h] = useV_jn_pz[h];
+    use_jn_btag2[h] = useV_jn_btag2[h];
+    use_jn_tightId[h] = useV_jn_tightId[h]; 
+  }
 
   // Anti-b-tag only jets>20
-  std::vector<UInt_t> jets20 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 20.);
-  Float_t thisbtagval = -2.;
-  for(std::vector<UInt_t>::const_iterator jj=jets20.begin(); jj!=jets20.end(); ++jj) {
-    if(jn_btag2[*jj]>thisbtagval) thisbtagval = jn_btag2[*jj];
-  }
-  histos[plotlab+"jetCsv"]->Fill(thisbtagval, wght);
-  if(thisbtagval>0.244) return;
-  histos[plotlab+"cutFlow"]->Fill("jetCsv", wght);
+  // Int_t idxHighestCsv = -1;
+  // //Float_t thisbtagval = getMaxValue(jnum, jn_btag2, idxHighestCsv, jn_px, jn_py, jn_pz, 20., 2.5);
+  // //Float_t thisbtagval = getMaxValue(jnum, jn_btag2, idxHighestCsv, jn_px, jn_py, jn_pz, 20., 2.5, jn_tightId);
+  // Float_t thisbtagval = getMaxValue(use_jn, use_jn_btag2, idxHighestCsv, use_jn_px, use_jn_py, use_jn_pz, 20., 2.5); // tightId already required
+  // histos[plotlab+"jetCsv"]->Fill(thisbtagval, wght);
+  // bool csvBool(thisbtagval<0.244);
+  std::vector<UInt_t> jets20Btagged = getListOfParticlesWithThreshold(use_jn, use_jn_btag2, 0.244, use_jn_px, use_jn_py, use_jn_pz, 20., 2.5); 
+  //std::vector<UInt_t> jets20Btagged = getListOfParticlesWithThreshold(use_jn, use_jn_btag2, 0.244, use_jn_px, use_jn_py, use_jn_pz, -1., 2.5);  // no pt thres. (already applied)
+  bool csvBool( jets20Btagged.size()==0 );
+  bool csvOneBool( jets20Btagged.size()>0 );
+  if(zPtBool && csvBool)
+    if( allVarsToPrintBins.count("jetCsv")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["jetCsv"]), wght);
 
   // Jet veto only jets>30
-  std::vector<UInt_t> jets30 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 30.);
+  //std::vector<UInt_t> jets30 = getListOfParticlesWithPt(jnum, jn_px, jn_py, 30.);
+  //std::vector<UInt_t> jets30 = getListOfParticlesWithPt(use_jn, use_jn_px, use_jn_py, 30., 0, 0, 0, use_jn_tightId);
+  std::vector<UInt_t> jets30 = getListOfParticlesWithPt(use_jn, use_jn_px, use_jn_py, 30.); // tightId already required
   unsigned int jets30N = jets30.size();
   histos[plotlab+"jetNumber"]->Fill(jets30N, wght);
-  if( jets30N>0 ) return;
-  histos[plotlab+"cutFlow"]->Fill("jetNumber", wght);
+  bool jets30NBool(jets30N==0);
+  if(zPtBool && csvBool && jets30NBool)
+    if( allVarsToPrintBins.count("jetNumber")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["jetNumber"]), wght);
 
   // Ind. minimized CMS RedMET > 50
   //Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
-  Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, 0., l2_px, l2_py, 0., htvec_px, htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
+  //Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, 0., l2_px, l2_py, 0., htvec_px, htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
+  Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, 0., l2_px, l2_py, 0., use_htvec_px, use_htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
+  //Float_t thisCMSredMet = getCMSRedMet(l1_px, l1_py, 0., l2_px, l2_py, 0.,     htvec_px,     htvec_py, met_pt[0], met_phi[0], cat); // no lept. uncert.
   histos[plotlab+"cmsIndMinRedMet"]->Fill(thisCMSredMet, wght);
-  if( thisCMSredMet<50. ) return;
-  histos[plotlab+"cutFlow"]->Fill("cmsIndMinRedMet", wght);
+  //bool redMetBool(thisCMSredMet>50.);
+  bool redMetBool(thisCMSredMet>60.);
+  if(zPtBool && csvBool && jets30NBool && redMetBool)
+    if( allVarsToPrintBins.count("cmsIndMinRedMet")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["cmsIndMinRedMet"]), wght);
 
   // // D0 RedMET > 50
   // Float_t thisD0redMet = getD0RedMet(l1_px, l1_py, l1_ptErr, l2_px, l2_py, l2_ptErr, htvec_px, htvec_py, met_pt[0], met_phi[0], cat);
   // histos[plotlab+"d0RedMet"]->Fill(thisD0redMet, wght);
   // if( thisD0redMet<50. ) return;
-  // histos[plotlab+"cutFlow"]->Fill("d0RedMet", wght);
+  // if( allVarsToPrintBins.count("d0RedMet")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["d0RedMet"]), wght);
 
   // 0.4 < bal < 1.8
   Float_t metPtBal = ( zPt>0 ? met_pt[0]/zPt : -1. );
   histos[plotlab+"metPtBalance"]->Fill(metPtBal, wght);
-  if(metPtBal<0.4 || metPtBal>1.8) return;
-  histos[plotlab+"cutFlow"]->Fill("metPtBalance", wght);
+  bool balBool(metPtBal>0.4 && metPtBal<1.8);
+  if(zPtBool && csvBool && jets30NBool && redMetBool && balBool)
+    if( allVarsToPrintBins.count("metPtBalance")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["metPtBalance"]), wght);
 
   Float_t dPhiJetMet = 4.0;
   Int_t idxClosestJet = -1;
-  dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet);
+  //dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet, 20.);  // loose cut
+  //dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet, 20., jn_tightId);  // medium cut
+  //dPhiJetMet = getParticleClosestInPhi(jnum, jn_px, jn_py, met_phi[0], idxClosestJet, 0., jn_tightId);  // tight cut
+  dPhiJetMet = getParticleClosestInPhi(use_jn, use_jn_px, use_jn_py, met_phi[0], idxClosestJet, 0.); 
   histos[plotlab+"deltaPhiJetMet"]->Fill(metPtBal, wght);
-  if(dPhiJetMet<0.5) return;
-  histos[plotlab+"cutFlow"]->Fill("deltaPhiJetMet", wght);
+  bool jetMetPhiBool(dPhiJetMet>0.5);
+  if(zPtBool && csvBool && jets30NBool && redMetBool && balBool && jetMetPhiBool)
+    if( allVarsToPrintBins.count("deltaPhiJetMet")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["deltaPhiJetMet"]), wght);
 
   // pt>10 both ele and mu (mu is pt>3 in the tree, could go as low as 5)
   std::vector<UInt_t> thirdlept10 = getListOfParticlesWithPt(ln, ln_px, ln_py, 10.);
   unsigned int thirdlept10N = thirdlept10.size();
   histos[plotlab+"extraLeptonNumber"]->Fill(thirdlept10N, wght);
-  if( thirdlept10N>0 ) return;
-  histos[plotlab+"cutFlow"]->Fill("extraLeptonNumber", wght);
+  bool thirdLeptBool(thirdlept10N==0);
+  if(zPtBool && csvBool && jets30NBool && redMetBool && balBool && jetMetPhiBool && thirdLeptBool)
+    if( allVarsToPrintBins.count("extraLeptonNumber")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["extraLeptonNumber"]), wght);
 
-  Float_t thismass = getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz);
-  histos[plotlab+"dileptMass"]->Fill(thismass, wght);
 
-  if( fabs(thismass-91.1876)<15. ) {
-    histos[plotlab+"dileptMassPeak"]->Fill(1., wght);
-    histos[plotlab+"cutFlow"]->Fill("dileptMassPeak", wght);
+  Float_t thismass = getMass(l1_en+l2_en, l1_px+l2_px, l1_py+l2_py, l1_pz+l2_pz); 
+  Float_t thisDileptMetTransMass = getTransMass(l1_px+l2_px, l1_py+l2_py, 0., met_pt[0], met_phi[0], 0. ); 
+  Float_t thisLeadLMetTransMass = getTransMass(l1_px, l1_py, 0., met_pt[0], met_phi[0], 0. ); 
+  Float_t thisSubleadLMetTransMass = getTransMass(l2_px, l2_py, 0., met_pt[0], met_phi[0], 0. ); 
+
+  bool subleadLMetTransMassCut( thisSubleadLMetTransMass>50. ); 
+
+  bool peakBool(false);
+  bool sideBool(false);
+
+  if( fabs(thismass-91.)<10. ) {  // fabs(thismass-91.1876)
+    peakBool = true;
   }
-  else if( fabs(thismass-91.1876)>15. &&
-	   fabs(thismass-91.1876)<30.   ) {
-    histos[plotlab+"dileptMassSide"]->Fill(1., wght);
-    histos[plotlab+"cutFlow"]->Fill("dileptMassSide", wght);
+  else if( (thismass>55.  && thismass<70. ) || 
+	   (thismass>110. && thismass<200.)   ) {  
+    sideBool = true;
+  }
+  else {}
+
+  // Complete selection
+  if(zPtBool && csvBool && jets30NBool && redMetBool && balBool && jetMetPhiBool && thirdLeptBool 
+     && subleadLMetTransMassCut ) {
+    histos[plotlab+"dileptMass"]->Fill(thismass, wght);
+    histos[plotlab+"dileptMetTransMass"]->Fill(thisDileptMetTransMass, wght);
+    histos[plotlab+"leadLMetTransMass"]->Fill(thisLeadLMetTransMass, wght);
+    histos[plotlab+"subleadLMetTransMass"]->Fill(thisSubleadLMetTransMass, wght);
+
+    if(peakBool) {       // peak
+      histos[plotlab+"dileptMassPeak"]->Fill(1., wght);
+      if( allVarsToPrintBins.count("dileptMassPeak")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["dileptMassPeak"]), wght);
+    }
+    else if(sideBool) {  // sidebands
+      histos[plotlab+"dileptMassSide"]->Fill(1., wght);
+      if( allVarsToPrintBins.count("dileptMassSide")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["dileptMassSide"]), wght);
+    }
+    else {}
+  }
+
+  // Loose selection
+  if(zPtBool && csvOneBool && redMetBool 
+     && subleadLMetTransMassCut ) {
+    histos[plotlab+"dileptMassAlpha"]->Fill(thismass, wght);
+    histos[plotlab+"dileptMetTransMassAlpha"]->Fill(thisDileptMetTransMass, wght);
+    histos[plotlab+"leadLMetTransMassAlpha"]->Fill(thisLeadLMetTransMass, wght);
+    histos[plotlab+"subleadLMetTransMassAlpha"]->Fill(thisSubleadLMetTransMass, wght);
+
+    if(peakBool) {       // peak
+      histos[plotlab+"dileptMassPeakAlpha"]->Fill(1., wght);
+      if( allVarsToPrintBins.count("dileptMassPeakAlpha")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["dileptMassPeakAlpha"]), wght);
+    }
+    else if(sideBool) {  // sidebands
+      histos[plotlab+"dileptMassSideAlpha"]->Fill(1., wght);
+      if( allVarsToPrintBins.count("dileptMassSideAlpha")>0 ) histos[plotlab+"cutFlow"]->Fill( float(allVarsToPrintBins["dileptMassSideAlpha"]), wght);
+    }
+    else {}
   }
 
   return;
@@ -1091,10 +1291,19 @@ void printNonResonantBackgrounds( std::map<TString, TH1F*> & tothistos,
   TString finalStates[4] = {"mm", "em", "ee", "em"}; 
   TString massDistr[2] = {"Peak", "Side"};
 
+  // mc: Monte Carlo, dt: Data
+  // im: invariant mass
+  // fs: final state
+  // ls: loose
   Float_t mc_im_fs[2][4];
   Float_t err_mc_im_fs[2][4];
   Float_t dt_im_fs[2][4];
   Float_t err_dt_im_fs[2][4];
+
+  Float_t mc_ls_im_fs[2][4];
+  Float_t err_mc_ls_im_fs[2][4];
+  Float_t dt_ls_im_fs[2][4];
+  Float_t err_dt_ls_im_fs[2][4];
 
   for(unsigned int a=0; a<2; ++a) {
     for(unsigned int b=0; b<4; ++b) {
@@ -1108,11 +1317,20 @@ void printNonResonantBackgrounds( std::map<TString, TH1F*> & tothistos,
       dt_im_fs[a][b]     = datahistos[plotlabDt]->GetBinContent(1);
       err_dt_im_fs[a][b] = datahistos[plotlabDt]->GetBinError(1);
 
+      plotlabCom += "Alpha";
+      plotlabMc += "Alpha";
+      plotlabDt += "Alpha";
+
+      mc_ls_im_fs[a][b]     = tothistos[plotlabMc]->GetBinContent(1);
+      err_mc_ls_im_fs[a][b] = tothistos[plotlabMc]->GetBinError(1);
+      dt_ls_im_fs[a][b]     = datahistos[plotlabDt]->GetBinContent(1);
+      err_dt_ls_im_fs[a][b] = datahistos[plotlabDt]->GetBinError(1);
     }
   }
 
   // Print out results
   cout << "Monte Carlo" << endl;
+  cout << "  (COMPLETE)" << endl;
   cout << "          \tmm                  "
        <<           "\tem                  "
        <<           "\tee                  "
@@ -1127,6 +1345,7 @@ void printNonResonantBackgrounds( std::map<TString, TH1F*> & tothistos,
        <<           "\t" << mc_im_fs[1][2] << " +- " << err_mc_im_fs[1][2] 
        <<           "\t" << mc_im_fs[1][3] << " +- " << err_mc_im_fs[1][3] 
        << endl << endl;
+
   cout << "For mm:" << endl;
   double alpha_mc_mm = mc_im_fs[1][0]/mc_im_fs[1][1];
   double relErr_alpha_mc_mm =  sqrt( pow( (err_mc_im_fs[1][0]/mc_im_fs[1][0]), 2) + pow( (err_mc_im_fs[1][1]/mc_im_fs[1][1]), 2) );
@@ -1143,8 +1362,44 @@ void printNonResonantBackgrounds( std::map<TString, TH1F*> & tothistos,
        << alpha_mc_ee << " +- " << alpha_mc_ee*relErr_alpha_mc_ee << " (" << relErr_alpha_mc_ee*100. << "%)" << endl;
   cout << " residual bkg = " << mc_im_fs[0][3]*alpha_mc_ee << " +- " << err_mc_im_fs[0][3]*alpha_mc_ee << " +- " << relErr_alpha_mc_ee*mc_im_fs[0][3] 
        << endl << endl;
+
+  cout << "  (LOOSE)" << endl;
+  cout << "          \tmm                  "
+       <<           "\tem                  "
+       <<           "\tee                  "
+       <<           "\tem" << std::endl;
+  cout << "      peak\t" << mc_ls_im_fs[0][0] << " +- " << err_mc_ls_im_fs[0][0] 
+       <<           "\t" << mc_ls_im_fs[0][1] << " +- " << err_mc_ls_im_fs[0][1] 
+       <<           "\t" << mc_ls_im_fs[0][2] << " +- " << err_mc_ls_im_fs[0][2] 
+       <<           "\t" << mc_ls_im_fs[0][3] << " +- " << err_mc_ls_im_fs[0][3] 
+       << endl;
+  cout << " sidebands\t" << mc_ls_im_fs[1][0] << " +- " << err_mc_ls_im_fs[1][0] 
+       <<           "\t" << mc_ls_im_fs[1][1] << " +- " << err_mc_ls_im_fs[1][1] 
+       <<           "\t" << mc_ls_im_fs[1][2] << " +- " << err_mc_ls_im_fs[1][2] 
+       <<           "\t" << mc_ls_im_fs[1][3] << " +- " << err_mc_ls_im_fs[1][3] 
+       << endl << endl;
+
+  cout << "For mm:" << endl;
+  double alpha_mc_ls_mm = mc_ls_im_fs[1][0]/mc_ls_im_fs[1][1];
+  double relErr_alpha_mc_ls_mm =  sqrt( pow( (err_mc_ls_im_fs[1][0]/mc_ls_im_fs[1][0]), 2) + pow( (err_mc_ls_im_fs[1][1]/mc_ls_im_fs[1][1]), 2) );
+  cout << " alpha = " << mc_ls_im_fs[1][0] << " +- " << err_mc_ls_im_fs[1][0] << " / " 
+       << mc_ls_im_fs[1][1] << " +- " << err_mc_ls_im_fs[1][1] << " = " 
+       << alpha_mc_ls_mm << " +- " << alpha_mc_ls_mm*relErr_alpha_mc_ls_mm << " (" << relErr_alpha_mc_ls_mm*100. << "%)" << endl;
+  cout << " residual bkg = " << mc_im_fs[0][1]*alpha_mc_ls_mm << " +- " << err_mc_im_fs[0][1]*alpha_mc_ls_mm << " +- " << relErr_alpha_mc_ls_mm*mc_im_fs[0][1] 
+       << endl << endl;
+  cout << "For ee:" << endl;
+  double alpha_mc_ls_ee = mc_ls_im_fs[1][2]/mc_ls_im_fs[1][3];
+  double relErr_alpha_mc_ls_ee =  sqrt( pow( (err_mc_ls_im_fs[1][2]/mc_ls_im_fs[1][2]), 2) + pow( (err_mc_ls_im_fs[1][3]/mc_ls_im_fs[1][3]), 2) );
+  cout << " alpha = " << mc_ls_im_fs[1][2] << " +- " << err_mc_ls_im_fs[1][2] << " / " 
+       << mc_ls_im_fs[1][3] << " +- " << err_mc_ls_im_fs[1][3] << " = " 
+       << alpha_mc_ls_ee << " +- " << alpha_mc_ls_ee*relErr_alpha_mc_ls_ee << " (" << relErr_alpha_mc_ls_ee*100. << "%)" << endl;
+  cout << " residual bkg = " << mc_im_fs[0][3]*alpha_mc_ls_ee << " +- " << err_mc_im_fs[0][3]*alpha_mc_ls_ee << " +- " << relErr_alpha_mc_ls_ee*mc_im_fs[0][3] 
+       << endl << endl;
+
   cout << "-------------------------------------------------------" << endl << endl;
+
   cout << "Data" << endl;
+  cout << "  (COMPLETE)" << endl;
   cout << "          \tmm         "
        <<           "\tem         "
        <<           "\tee         "
@@ -1159,6 +1414,7 @@ void printNonResonantBackgrounds( std::map<TString, TH1F*> & tothistos,
        <<           "\t" << dt_im_fs[1][2] << " +- " << err_dt_im_fs[1][2] 
        <<           "\t" << dt_im_fs[1][3] << " +- " << err_dt_im_fs[1][3] 
        << endl << endl;
+
   cout << "For mm:" << endl;
   double alpha_dt_mm = dt_im_fs[1][0]/dt_im_fs[1][1];
   double relErr_alpha_dt_mm =  sqrt( pow( (err_dt_im_fs[1][0]/dt_im_fs[1][0]), 2) + pow( (err_dt_im_fs[1][1]/dt_im_fs[1][1]), 2) );
@@ -1174,6 +1430,39 @@ void printNonResonantBackgrounds( std::map<TString, TH1F*> & tothistos,
        << dt_im_fs[1][3] << " +- " << err_dt_im_fs[1][3] << " = " 
        << alpha_dt_ee << " +- " << alpha_dt_ee*relErr_alpha_dt_ee << " (" << relErr_alpha_dt_ee*100. << "%)" << endl;
   cout << " residual bkg = " << dt_im_fs[0][3]*alpha_dt_ee << " +- " << err_dt_im_fs[0][3]*alpha_dt_ee << " +- " << relErr_alpha_dt_ee*dt_im_fs[0][3] 
+       << endl << endl;
+
+  cout << "  (LOOSE)" << endl;
+  cout << "          \tmm         "
+       <<           "\tem         "
+       <<           "\tee         "
+       <<           "\tem" << std::endl;
+  cout << "      peak\t" << dt_ls_im_fs[0][0] << " +- " << err_dt_ls_im_fs[0][0] 
+       <<           "\t" << dt_ls_im_fs[0][1] << " +- " << err_dt_ls_im_fs[0][1] 
+       <<           "\t" << dt_ls_im_fs[0][2] << " +- " << err_dt_ls_im_fs[0][2] 
+       <<           "\t" << dt_ls_im_fs[0][3] << " +- " << err_dt_ls_im_fs[0][3] 
+       << endl;
+  cout << " sidebands\t" << dt_ls_im_fs[1][0] << " +- " << err_dt_ls_im_fs[1][0] 
+       <<           "\t" << dt_ls_im_fs[1][1] << " +- " << err_dt_ls_im_fs[1][1] 
+       <<           "\t" << dt_ls_im_fs[1][2] << " +- " << err_dt_ls_im_fs[1][2] 
+       <<           "\t" << dt_ls_im_fs[1][3] << " +- " << err_dt_ls_im_fs[1][3] 
+       << endl << endl;
+
+  cout << "For mm:" << endl;
+  double alpha_dt_ls_mm = dt_ls_im_fs[1][0]/dt_ls_im_fs[1][1];
+  double relErr_alpha_dt_ls_mm =  sqrt( pow( (err_dt_ls_im_fs[1][0]/dt_ls_im_fs[1][0]), 2) + pow( (err_dt_ls_im_fs[1][1]/dt_ls_im_fs[1][1]), 2) );
+  cout << " alpha = " << dt_ls_im_fs[1][0] << " +- " << err_dt_ls_im_fs[1][0] << " / " 
+       << dt_ls_im_fs[1][1] << " +- " << err_dt_ls_im_fs[1][1] << " = " 
+       << alpha_dt_ls_mm << " +- " << alpha_dt_ls_mm*relErr_alpha_dt_ls_mm << " (" << relErr_alpha_dt_ls_mm*100. << "%)" << endl;
+  cout << " residual bkg = " << dt_im_fs[0][1]*alpha_dt_ls_mm << " +- " << err_dt_im_fs[0][1]*alpha_dt_ls_mm << " +- " << relErr_alpha_dt_ls_mm*dt_im_fs[0][1] 
+       << endl << endl;
+  cout << "For ee:" << endl;
+  double alpha_dt_ls_ee = dt_ls_im_fs[1][2]/dt_ls_im_fs[1][3];
+  double relErr_alpha_dt_ls_ee =  sqrt( pow( (err_dt_ls_im_fs[1][2]/dt_ls_im_fs[1][2]), 2) + pow( (err_dt_ls_im_fs[1][3]/dt_ls_im_fs[1][3]), 2) );
+  cout << " alpha = " << dt_ls_im_fs[1][2] << " +- " << err_dt_ls_im_fs[1][2] << " / " 
+       << dt_ls_im_fs[1][3] << " +- " << err_dt_ls_im_fs[1][3] << " = " 
+       << alpha_dt_ls_ee << " +- " << alpha_dt_ls_ee*relErr_alpha_dt_ls_ee << " (" << relErr_alpha_dt_ls_ee*100. << "%)" << endl;
+  cout << " residual bkg = " << dt_im_fs[0][3]*alpha_dt_ls_ee << " +- " << err_dt_im_fs[0][3]*alpha_dt_ls_ee << " +- " << relErr_alpha_dt_ls_ee*dt_im_fs[0][3] 
        << endl << endl;
 
   return;

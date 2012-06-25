@@ -196,6 +196,7 @@ void dileptonMetAnalysis() {
 
   // Labels to be actually used
   TString alllabelstouse[]={"zz", "wz", "ww", "tt", "t_s", "tbar_s", "t_t", "tbar_t", "t_tw", "tbar_tw", "zzx", "w", "z"};
+  //TString alllabelstouse[]={"zz", "wz", "ww"};
   unsigned int nSmpsToUse=sizeof(alllabelstouse)/sizeof(TString);
 
   //TString allhiggslabelstouse[]={};
@@ -233,7 +234,7 @@ void dileptonMetAnalysis() {
   allfiles["t_tw"].push_back(base_mc+"SingleT_tW.root"); allfiles["tbar_tw"].push_back(base_mc+"SingleTbar_tW.root");
   allfiles["t_t"].push_back(base_mc+"SingleT_t.root");   allfiles["tbar_t"].push_back(base_mc+"SingleTbar_t.root");
   allfiles["t_s"].push_back(base_mc+"SingleT_s.root");   allfiles["tbar_s"].push_back(base_mc+"SingleTbar_s.root");
-  allfiles["zzx"].push_back(base_mc+"ZZ_0.root"); allfiles["zz"].push_back(base_mc+"ZZ_1.root");
+  allfiles["zzx"].push_back(base_mc+"ZZ_0.root"); allfiles["zzx"].push_back(base_mc+"ZZ_1.root");
   allfiles["w"].push_back(base_mc+"WJetsToLNu.root"); 
   allfiles["z"].push_back(base_mc+"DYJetsToLL_0.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_1.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_2.root"); 
   allfiles["z"].push_back(base_mc+"DYJetsToLL_3.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_4.root"); allfiles["z"].push_back(base_mc+"DYJetsToLL_5.root"); 
@@ -333,6 +334,7 @@ void dileptonMetAnalysis() {
   std::map<int, TString> finalStates;
   finalStates[1] = "mm";
   finalStates[2] = "ee";
+  // finalStates[2] = "em";
 
   // 
   // Variables to be plotted + binning and range limits (optional)
@@ -348,28 +350,29 @@ void dileptonMetAnalysis() {
   //           Variable             Title X                                     Y   N    x0     xN           Plot   Print
   //addVariable( "nvtx",              "Number of reconstructed vertices",         "", 34,  0.5,   34.5,        true,  false );
   addVariable( "preselEntries",     "NumberEntriesPresel",                      "", 1,   0.,    2.,          false, false );
-  addVariable( "preselWeights",     "Preselection",                             "", 1,   0.,    2.,          false, true  );
+  //addVariable( "preselWeights",     "Preselection",                             "", 1,   0.,    2.,          false, true  );
+  addVariable( "preselWeights",     "Preselection",                             "", 1,   0.,    2.,          true, true );
   addVariable( "dileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "", 60,  60.,   120.,        true,  true  );
-  addVariable( "dileptPt",          "Dilepton p_{T} [GeV/c]",                   "", 60,  0.,    120.,        true,  true  );
-  addVariable( "jetCsv",            "CSV discriminator (PFJet p_{T} > 20 GeV)", "", 22,  -1.1,  1.1,         true,  true  );
-  addVariable( "jetNumber",         "PFJet number (p_{T} > 30 GeV/c)",          "", 6,   -0.5,  5.5,         true,  true  );
+  addVariable( "dileptPt",          "Dilepton p_{T} [GeV/c]",                   "", 60,  0.,    120.,        true, true );
+  addVariable( "jetCsv",            "CSV discriminator (PFJet p_{T} > 20 GeV)", "", 22,  -1.1,  1.1,         true, true );
+  addVariable( "jetNumber",         "PFJet number (p_{T} > 30 GeV/c)",          "", 6,   -0.5,  5.5,         true, true );
   // // addVariable( "thirdLeptonNumber", "Third lepton number (before MET)",         "", 4,   -0.5,  3.5,         true,  false );
-  addVariable( "cmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        true,  true  ); 
+  addVariable( "cmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        true, true ); 
   //addVariable( "d0RedMet",          "D0 reduced MET [GeV]",                     "", 100, 0.,    300.,        true,  true  ); 
-  addVariable( "metPtBalance",      "PF MET/p_{T}(Z)",                          "", 30,  0.,    3.,          true,  true  ); 
-  addVariable( "deltaPhiJetMet",    "#Delta#phi(jet,MET) [rad]",                "", 18., 0.,    3.141592654, true,  true  ); 
+  addVariable( "metPtBalance",      "PF MET/p_{T}(Z)",                          "", 30,  0.,    3.,          true, true ); 
+  addVariable( "deltaPhiJetMet",    "#Delta#phi(jet,MET) [rad]",                "", 18., 0.,    3.141592654, true, true ); 
   // // addVariable( "thirdMuPt",         "Third muon p_{T} [GeV/c]",                 "", 60,  0.,    60.,         true,  false );
   // // addVariable( "thirdEPt",          "Third electron p_{T} [GeV/c]",             "", 60,  0.,    60.,         true,  false );
-  addVariable( "extraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         true,  true  );
+  addVariable( "extraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         true, true  );
 
-  addVariable( "ALLdileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "", 60,  60.,   120.,        true,  false );
-  addVariable( "ALLdileptPt",          "Dilepton p_{T} [GeV/c]",                   "", 60,  0.,    120.,        true,  false );
-  addVariable( "ALLjetCsv",            "CSV discriminator (PFJet p_{T} > 20 GeV)", "", 22,  -1.1,  1.1,         true,  false );
-  addVariable( "ALLjetNumber",         "PFJet number (p_{T} > 30 GeV/c)",          "", 6,   -0.5,  5.5,         true,  false );
-  addVariable( "ALLcmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        true,  false ); 
-  addVariable( "ALLmetPtBalance",      "PF MET/p_{T}(Z)",                          "", 30,  0.,    3.,          true,  false ); 
-  addVariable( "ALLdeltaPhiJetMet",    "#Delta#phi(jet,MET) [rad]",                "", 18., 0.,    3.141592654, true,  false ); 
-  addVariable( "ALLextraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         true,  false );
+  addVariable( "ALLdileptMass",        "Dilepton invariant mass [GeV/c^{2}]",      "", 60,  60.,   120.,        false, false );
+  addVariable( "ALLdileptPt",          "Dilepton p_{T} [GeV/c]",                   "", 60,  0.,    120.,        false, false );
+  addVariable( "ALLjetCsv",            "CSV discriminator (PFJet p_{T} > 20 GeV)", "", 22,  -1.1,  1.1,         false, false );
+  addVariable( "ALLjetNumber",         "PFJet number (p_{T} > 30 GeV/c)",          "", 6,   -0.5,  5.5,         false, false );
+  addVariable( "ALLcmsIndMinRedMet",   "CMS reduced MET [GeV]",                    "", 100, 0.,    300.,        false, false ); 
+  addVariable( "ALLmetPtBalance",      "PF MET/p_{T}(Z)",                          "", 30,  0.,    3.,          false, false ); 
+  addVariable( "ALLdeltaPhiJetMet",    "#Delta#phi(jet,MET) [rad]",                "", 18., 0.,    3.141592654, false, false ); 
+  addVariable( "ALLextraLeptonNumber", "Additional lepton number (loose sel.)",    "", 4,   -0.5,  3.5,         false, false );
 
   unsigned int numberCuts = allVarsToPrint.size();
 
@@ -377,7 +380,10 @@ void dileptonMetAnalysis() {
   if(numberCuts>0)
     addVariable( "cutFlow", "", "Events", numberCuts, 0.5, float(numberCuts)+0.5, true, false );
 
-  addVariable( "csCosTheta", "cos#theta_{CS}",    "", 12,   -1.,  1.,         true,  false );
+  addVariable( "csCosTheta", "|cos#theta_{CS}|", "", 12, 0., 1., false, false );
+  addVariable( "zzTransMass", "ZZ transverse mass [GeV]", "", 20, 180., 580., false, false );
+  addVariable( "zPz", "Z longitudinal momentum |p_{z}| [GeV/c]", "", 10, 0., 300., false, false );
+  addVariable( "zRapidity", "Z rapidity", "", 10, -2.5, 2.5, false, false );
 
   //
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -667,7 +673,7 @@ void dileptonMetAnalysis() {
 	attachToTree(alltrees[allhiggslabelstouse[j]]);
 
 	// General weight
-	float genWeight = intLumi * allxsect[allhiggslabelstouse[j]] * allbrfra[allhiggslabelstouse[j]] * allpucfs[alllabelstouse[j]] / allgenev[allhiggslabelstouse[j]];
+	float genWeight = intLumi * allxsect[allhiggslabelstouse[j]] * allbrfra[allhiggslabelstouse[j]] * allpucfs[allhiggslabelstouse[j]] / allgenev[allhiggslabelstouse[j]];
 
 	// 
 	// Loop over events
@@ -1046,6 +1052,7 @@ void dileptonMetAnalysis() {
 
 void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght, double puWght) {
 
+  bool isMC( nmcparticles>0 ); 
   if(puWght<0.) puWght = wght;
 
   // //           Variable             Title X                                     Y   N    x0     xN           Plot   Print
@@ -1085,6 +1092,15 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght, 
   histos[plotlab+"preselEntries"]->Fill(1.);
   //histos[plotlab+"cutFlow"]->Fill("preselEntries", 1);
 
+  // Energy corrections for electrons
+  if( isMC==false && cat==2) {
+    double enCorr1 = en_corren[l1_pid]/l1_en; if(enCorr1==0) enCorr1 = 1.0;
+    double enCorr2 = en_corren[l2_pid]/l2_en; if(enCorr2==0) enCorr2 = 1.0;
+
+    l1_px *= enCorr1; l1_py *= enCorr1; l1_pz *= enCorr1; l1_en *= enCorr1; 
+    l2_px *= enCorr2; l2_py *= enCorr2; l2_pz *= enCorr2; l2_en *= enCorr2; 
+  }
+
   // WARNING!!!
   // Filled with ONLY PU weight!!! (To get correction factor on PU!)
   histos[plotlab+"preselWeights"]->Fill(1., puWght); 
@@ -1122,11 +1138,14 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght, 
 
   for(int jdx=0; jdx<jnum; ++jdx) {
     double j_pt = getPt(jn_px[jdx], jn_py[jdx]); 
-    if( j_pt<15. || jn_tightId[jdx]==0 ) continue;
+    double j_eta = getEta(jn_px[jdx], jn_py[jdx], jn_pz[jdx]); 
+    double jetCorrSF = jetSmearingFactor( jn_genpt[jdx], j_pt, j_eta ); 
+    if( isMC==false ) jetCorrSF = 1.0; 
+    if( jetCorrSF*j_pt<15. || jn_tightId[jdx]==0 ) continue;
 
     use_jn += 1;
-    useV_jn_px.push_back(jn_px[jdx]);
-    useV_jn_py.push_back(jn_py[jdx]);
+    useV_jn_px.push_back(jetCorrSF*jn_px[jdx]); // with SF (N.B. also jn_en should be corrected)
+    useV_jn_py.push_back(jetCorrSF*jn_py[jdx]); // with SF (N.B. also jn_en should be corrected)
     useV_jn_pz.push_back(jn_pz[jdx]);
     useV_jn_btag2.push_back(jn_btag2[jdx]);
     //useV_jn_tightId.push_back(jn_tightId[jdx]);
@@ -1234,6 +1253,11 @@ void fillPlots(std::map<TString, TH1F*> & histos, TString plotlab, double wght, 
     double csCosTh = csCosThetaAbs(pt1, eta1, phi1, (-1.)*l1_id, 
 				   pt2, eta2, phi2); 
     histos[plotlab+"csCosTheta"]->Fill(csCosTh, wght);
+    double zzTransMass = getTransMass(l1_px+l2_px, l1_py+l2_py, 91.18, met_pt[0], met_phi[0], 91.18 );
+    histos[plotlab+"zzTransMass"]->Fill( zzTransMass, wght);
+    histos[plotlab+"zPz"]->Fill( l1_pz+l2_pz, wght);
+    double zRapidity = getRapidity(l1_en+l2_en, l1_pz+l2_pz); 
+    histos[plotlab+"zRapidity"]->Fill( zRapidity, wght);
   }
 
   return;
