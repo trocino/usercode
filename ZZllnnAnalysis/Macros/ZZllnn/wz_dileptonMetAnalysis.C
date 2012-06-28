@@ -1,5 +1,5 @@
 /*
- *  $Date: 2011/07/11 19:28:25 $
+ *  $Date: 2012/06/25 08:02:09 $
  *  \author D. Trocino   - Northeastern University
  */
 
@@ -80,10 +80,13 @@ void wz_dileptonMetAnalysis() {
   // Samples location
   //TString indir="/home/daniele/Documents/Work/samples/2012-03-26_cmgTrees";
   //TString indir="/home/daniele/Documents/Work/samples/2012-04-03_cmgTrees";
-  TString indir="/home/daniele/Documents/Work/samples/2012-05-14_trees";
+  //TString indir="/home/daniele/Documents/Work/samples/2012-05-14_trees"; // last used
+  TString indir="root://eoscms//eos/cms/store/cmst3/user/querten/12_04_14_HZZ2l2v_ntuples"; // for lxplus
+  TString higgsindir="rfio:/castor/cern.ch/user/t/trocino/ZZllnn/InvisibleHiggs/2012-04-16_invisibleHiggs/trees"; // for lxplus
   TString basename_mc="MC_";
   TString basename_dt="Data_";
   TString base_mc=indir+"/"+basename_mc;
+  TString higgsbase_mc=higgsindir+"/"+basename_mc;
   TString base_dt=indir+"/"+basename_dt;
 
   // Integrated luminosity
@@ -223,10 +226,14 @@ void wz_dileptonMetAnalysis() {
   std::map<TString, Style_t> alllines;
 
   // Fill maps with files
-  allfiles["zh105"].push_back(base_mc+"ZH105.root");
-  allfiles["zh115"].push_back(base_mc+"ZH115.root");
-  allfiles["zh125"].push_back(base_mc+"ZH125.root");
-  allfiles["zh150"].push_back(base_mc+"ZH150.root");
+  allfiles["zh105"].push_back(higgsbase_mc+"ZH105.root");
+  allfiles["zh115"].push_back(higgsbase_mc+"ZH115.root");
+  allfiles["zh125"].push_back(higgsbase_mc+"ZH125.root");
+  allfiles["zh150"].push_back(higgsbase_mc+"ZH150.root");
+  // allfiles["zh105"].push_back(base_mc+"ZH105.root");
+  // allfiles["zh115"].push_back(base_mc+"ZH115.root");
+  // allfiles["zh125"].push_back(base_mc+"ZH125.root");
+  // allfiles["zh150"].push_back(base_mc+"ZH150.root");
   allfiles["zz"].push_back(base_mc+"ZZ_0.root"); allfiles["zz"].push_back(base_mc+"ZZ_1.root");
   allfiles["wz"].push_back(base_mc+"WZ_0.root"); allfiles["wz"].push_back(base_mc+"WZ_1.root");
   allfiles["ww"].push_back(base_mc+"WW.root");
