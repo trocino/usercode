@@ -9,10 +9,6 @@ process.source = cms.Source("PoolSource",
                             secondaryFileNames = cms.untracked.vstring()
                             )
 
-#process.load("FWCore.MessageService.MessageLogger_cfi")
-#process.MessageLogger.FrameworkJobReport.default.limit = cms.untracked.int32(0)
-#process.MessageLogger.FrameworkJobReport.FwkJob.limit = cms.untracked.int32(0)
-
 process.MessageLogger = cms.Service("MessageLogger",
                                     debugModules = cms.untracked.vstring('*'),
                                     suppressDebug = cms.untracked.vstring('FwkJob', 'FwkReport'),
@@ -23,7 +19,6 @@ process.MessageLogger = cms.Service("MessageLogger",
                                     )
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-#process.GlobalTag.globaltag = "GR_R_52_V7::All"
 process.GlobalTag.globaltag = "GR_P_V32::All"
 
 process.hltMenuVersionProvider =cms.EDAnalyzer("HLTMenuVersionProvider",
