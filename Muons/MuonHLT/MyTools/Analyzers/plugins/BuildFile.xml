@@ -1,0 +1,17 @@
+<use   name="FWCore/Framework"/>
+<use   name="FWCore/Utilities"/>
+<use   name="FWCore/ParameterSet"/>
+<use   name="CommonTools/UtilAlgos"/>
+<use   name="DataFormats/MuonReco"/>
+<use   name="HLTrigger/HLTcore"/>
+<use   name="CLHEP"/>
+<use   name="root"/>
+<library   file="HLTCounter.cc" name="HLTCounter">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="MuonTriggerEfficiencyAnalyzer.cc" name="MuonTriggerEfficiencyAnalyzer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="HLTMenuVersionProvider.cc" name="HLTMenuVersionProvider">
+  <flags   EDM_PLUGIN="1"/>
+</library>
