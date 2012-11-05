@@ -1,6 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
-process = cms.Process("RATE")
+process = cms.Process("HLTMENU")
 
 process.source = cms.Source("PoolSource",
                             fileNames = cms.untracked.vstring(
