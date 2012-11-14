@@ -88,6 +88,9 @@ private:
 
   // count the number of times each path fired
   // store it in this vector
+  unsigned         countsAllPathByLS_OR;  // OR (with no prescales)
+  vector<unsigned> countsPerPathByLS_EX;  // exclusive (with no prescales)
+
   vector<unsigned> countsPerPath;
 
   vector<unsigned> countsPerPathByLS;
@@ -148,6 +151,9 @@ private:
   TH1D *hRatePerPath_L2;
   TH1D *hRatePerPath_L3;
   TH1D *hRatePerPath_L3iso;
+
+  TProfile *             hRate_OR;  // OR (with no prescales)
+  std::vector<TProfile*> hRates_EX;  // exclusive (with no prescales)
 
   std::vector<TProfile*> hRates;
   std::vector<TProfile*> hRates_L1;
@@ -362,6 +368,7 @@ void HLTCounter::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   std::pair<int,int>  psValueCombo;
 
   unsigned int hltPathCount(0);
+  unsigned int hltPathsMask(0);
   for(unsigned int iHltPath=0; iHltPath<hltConfig_.size(); ++iHltPath) {
 
     if( !checkTriggerName( hltConfig_.triggerName(iHltPath) ) ) continue; 
@@ -385,6 +392,8 @@ void HLTCounter::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     if( triggerResults->accept(iHltPath) ) {
       if(outputPrint) std::cout << "Fired Path " << iHltPath << "  " << hltConfig_.triggerName(iHltPath)
 				<< std::endl;
+
+      hltPathsMask += std::pow(2, hltPathCount); 
 
       countsPerPath[hltPathCount]++;
       countsPerPathByLS[hltPathCount]++;
@@ -543,6 +552,18 @@ void HLTCounter::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     hltPathCount++;
   }
 
+  // Total rate and exclusive rates
+  if(hltPathsMask>0) {
+    countsAllPathByLS_OR++; 
+
+    hltPathCount = 0; 
+    for(unsigned int iHltPath=0; iHltPath<hltConfig_.size(); ++iHltPath) {
+      if( !checkTriggerName( hltConfig_.triggerName(iHltPath) ) ) continue; 
+      if(hltPathsMask==std::pow(2, hltPathCount)) countsPerPathByLS_EX[hltPathCount]++;
+      hltPathCount++;
+    } 
+  }
+
 }
 
 
@@ -586,6 +607,8 @@ void HLTCounter::endJob() {
   hRatePerPath_L3->Write();
   hRatePerPath_L3iso->Write();
 
+  hRate_OR->Write();
+
   unsigned int hltCnt(0);
   for(unsigned iHltPath = 0; iHltPath<hltConfig_.size(); ++iHltPath) {
     if( !checkTriggerName( hltConfig_.triggerName(iHltPath) ) ) continue; 
@@ -602,6 +625,7 @@ void HLTCounter::endJob() {
     cout << left << setw(58) << tempName
 	 << right << countsPerPath[hltCnt] << endl;
 
+    hRates_EX[hltCnt]->Write();
     hRates[hltCnt]->Write();
     hRates_L1[hltCnt]->Write();
     hRates_L2[hltCnt]->Write();
@@ -687,12 +711,16 @@ void HLTCounter::beginRun(edm::Run const& iRun, edm::EventSetup const& iSetup) {
     hRatePerPath_L3->Sumw2();
     hRatePerPath_L3iso->Sumw2();
 
+    hRate_OR = new TProfile( "TotalRate", "Total rate", nRateBins, firstRateBin, lastRateBin); 
+
     std::cout << "===== Initializing counters to zero ====================" << std::endl;
+    countsAllPathByLS_OR = 0;
     unsigned int hltCnt(0);
     for(unsigned iHltPath=0; iHltPath<hltConfig_.size(); ++iHltPath) {
       if( !checkTriggerName( hltConfig_.triggerName(iHltPath) ) ) continue; 
 
       countsPerPath.push_back(0);
+      countsPerPathByLS_EX.push_back(0);
       countsPerPathByLS.push_back(0);
       countsPerPathByLS_L1.push_back(0);
       countsPerPathByLS_L2.push_back(0);
@@ -712,7 +740,8 @@ void HLTCounter::beginRun(edm::Run const& iRun, edm::EventSetup const& iSetup) {
       hRatePerPath_L3iso->GetXaxis()->SetBinLabel(hltCnt+1, hltConfig_.triggerName(iHltPath).c_str()); 
 
       std::string plotNameBase = "rate_"+hltConfig_.triggerName(iHltPath);
-      hRates.push_back( new TProfile( plotNameBase.c_str(), plotNameBase.c_str(), nRateBins, firstRateBin, lastRateBin) ); 
+      hRates_EX.push_back(    new TProfile( ("EX_"   +plotNameBase).c_str(), ("EX_"   +plotNameBase).c_str(), nRateBins, firstRateBin, lastRateBin) ); 
+      hRates.push_back(       new TProfile( (         plotNameBase).c_str(), (         plotNameBase.c_str()), nRateBins, firstRateBin, lastRateBin) ); 
       hRates_L1.push_back(    new TProfile( ("L1_"   +plotNameBase).c_str(), ("L1_"   +plotNameBase).c_str(), nRateBins, firstRateBin, lastRateBin) );
       hRates_L2.push_back(    new TProfile( ("L2_"   +plotNameBase).c_str(), ("L2_"   +plotNameBase).c_str(), nRateBins, firstRateBin, lastRateBin) );
       hRates_L3.push_back(    new TProfile( ("L3_"   +plotNameBase).c_str(), ("L3_"   +plotNameBase).c_str(), nRateBins, firstRateBin, lastRateBin) );
@@ -771,14 +800,12 @@ void HLTCounter::endLuminosityBlock(edm::LuminosityBlock const& iLumiBlock, edm:
   }
 
   if( TotNumLumiSections%nLumisInAverage==0 ) {
+    hRate_OR->Fill( averageInstLumi, countsAllPathByLS_OR / (nLumisInAverage*23.31) ); 
+
     unsigned int hltCnt(0);
     for(unsigned iHltPath=0; iHltPath<hltConfig_.size(); ++iHltPath) {
       if( !checkTriggerName( hltConfig_.triggerName(iHltPath) ) ) continue; 
-      // hRates[hltCnt]      ->Fill( averageInstLumi, countsPerPathByLS[hltCnt]       / (nLumisInAverage*23.31), averagePrescale[hltCnt]       ); 
-      // hRates_L1[hltCnt]   ->Fill( averageInstLumi, countsPerPathByLS_L1[hltCnt]    / (nLumisInAverage*23.31), averagePrescale_L1[hltCnt]    ); 
-      // hRates_L2[hltCnt]   ->Fill( averageInstLumi, countsPerPathByLS_L2[hltCnt]    / (nLumisInAverage*23.31), averagePrescale_L2[hltCnt]    ); 
-      // hRates_L3[hltCnt]   ->Fill( averageInstLumi, countsPerPathByLS_L3[hltCnt]    / (nLumisInAverage*23.31), averagePrescale_L3[hltCnt]    ); 
-      // hRates_L3iso[hltCnt]->Fill( averageInstLumi, countsPerPathByLS_L3iso[hltCnt] / (nLumisInAverage*23.31), averagePrescale_L3iso[hltCnt] ); 
+      hRates_EX[hltCnt]   ->Fill( averageInstLumi, countsPerPathByLS_EX[hltCnt]                                    / (nLumisInAverage*23.31) ); 
       hRates[hltCnt]      ->Fill( averageInstLumi, countsPerPathByLS[hltCnt]       * averagePrescale[hltCnt]       / (nLumisInAverage*23.31) ); 
       hRates_L1[hltCnt]   ->Fill( averageInstLumi, countsPerPathByLS_L1[hltCnt]    * averagePrescale_L1[hltCnt]    / (nLumisInAverage*23.31) ); 
       hRates_L2[hltCnt]   ->Fill( averageInstLumi, countsPerPathByLS_L2[hltCnt]    * averagePrescale_L2[hltCnt]    / (nLumisInAverage*23.31) ); 
@@ -805,7 +832,9 @@ void HLTCounter::clearLumiAverage() {
   averageInstLumi = 0;
   NumInstLumis = 0;
   InstLumiArray.clear();
+  countsAllPathByLS_OR = 0;
   for(unsigned int h=0; h<countsPerPathByLS.size(); ++h) {
+    countsPerPathByLS_EX[h] = 0;
     countsPerPathByLS[h] = 0;
     countsPerPathByLS_L1[h] = 0;
     countsPerPathByLS_L2[h] = 0;
