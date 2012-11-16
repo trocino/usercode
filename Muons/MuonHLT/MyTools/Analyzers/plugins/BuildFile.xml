@@ -10,6 +10,13 @@
   <flags   EDM_PLUGIN="1"/>
 </library>
 <library   file="MuonTriggerEfficiencyAnalyzer.cc" name="MuonTriggerEfficiencyAnalyzer">
+  <use name="TrackingTools/TrajectoryState"/>
+  <use name="MagneticField/Engine"/>
+  <use name="MagneticField/Records"/>
+  <use name="TrackingTools/Records"/>
+  <use name="TrackPropagation/SteppingHelixPropagator"/>
+  <use name="RecoMuon/Records"/>
+  <use name="RecoMuon/DetLayers"/>
   <flags   EDM_PLUGIN="1"/>
 </library>
 <library   file="HLTMenuVersionProvider.cc" name="HLTMenuVersionProvider">
