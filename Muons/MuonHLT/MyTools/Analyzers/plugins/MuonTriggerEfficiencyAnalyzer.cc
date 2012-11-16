@@ -1,3 +1,11 @@
+/** \class MuonTriggerEfficiencyAnalyzer
+ *  Class to measure muon trigger efficiencies (very rough)
+ *
+ *  $Date: 2012/11/15 17:54:22 $
+ *  $Revision: 1.2 $
+ *  \authors D. Trocino - Northeastern University <daniele.trocino@cern.ch>
+ */
+
 #include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -5,6 +13,8 @@
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "FWCore/Common/interface/TriggerResultsByName.h"
 #include "DataFormats/Common/interface/Handle.h"
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
 #include "DataFormats/HLTReco/interface/TriggerObject.h"
@@ -17,6 +27,16 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 #include "HLTrigger/HLTcore/interface/HLTEventAnalyzerAOD.h"
+#include "MagneticField/Engine/interface/MagneticField.h"
+#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
+#include "TrackingTools/Records/interface/TrackingComponentsRecord.h"
+#include "RecoMuon/Records/interface/MuonRecoGeometryRecord.h"
+#include "TrackPropagation/SteppingHelixPropagator/interface/SteppingHelixPropagator.h"
+#include "TrackingTools/DetLayers/interface/DetLayer.h"
+#include "RecoMuon/DetLayers/interface/MuonDetLayerGeometry.h"
+#include "TrackingTools/TrajectoryState/interface/TrajectoryStateOnSurface.h"
+#include "TrackingTools/TrajectoryState/interface/FreeTrajectoryState.h"
+#include "DataFormats/TrajectoryState/interface/PTrajectoryStateOnDet.h"
 
 #include <map>
 #include <string>
@@ -25,21 +45,6 @@
 
 #include "TH1F.h"
 #include "TH2F.h"
-
-
-/**
-   Class declaration
-
-   \class MuonTriggerEfficiencyAnalyzer MuonTriggerEfficiencyAnalyzer.h "PhysicsTools/UtilAlgos/interface/MuonTriggerEfficiencyAnalyzer.h"
-   \brief Example class that can be used both within FWLite and within the full framework
-
-   This is an example for keeping classes that can be used both within FWLite and within the full 
-   framework. The class is derived from the BasicAnalyzer base class, which is an interface for 
-   the two wrapper classes EDAnalyzerWrapper and FWLiteAnalyzerWrapper. The latter provides basic 
-   configuration file reading and event looping equivalent to the FWLiteHistograms executable of 
-   this package. You can see the FWLiteAnalyzerWrapper class at work in the FWLiteWithBasicAnalyzer
-   executable of this package.
-*/
 
 class MuonTriggerEfficiencyAnalyzer : public edm::EDAnalyzer {
 
@@ -75,14 +80,22 @@ class MuonTriggerEfficiencyAnalyzer : public edm::EDAnalyzer {
   // Trigger names
   std::string tagTriggerName_;
   std::string triggerName_;
+  std::string probeFilterDen_;
+  std::string probeFilterNum_;
+
   // Trigger indexes
   int tagTriggerIndex_;
   int triggerIndex_;
   // HLTConfig
   HLTConfigProvider hltConfig_;
 
-  /// Max number of offline muons allowed in the event
+  // Max number of offline muons allowed in the event
   unsigned int nMaxMuons_;
+
+  // Services
+  edm::ESHandle<MagneticField> magneticField_;
+  edm::ESHandle<Propagator> propagator_;
+  edm::ESHandle<MuonDetLayerGeometry> detLayerGeometry_;
 };
 
 /// default constructor
@@ -92,7 +105,9 @@ MuonTriggerEfficiencyAnalyzer::MuonTriggerEfficiencyAnalyzer(const edm::Paramete
   triggerProcess_(cfg.getParameter<std::string>("triggerProcess")), 
   tagTriggerName_(cfg.getParameter<std::string>("tagTriggerName")), 
   triggerName_(cfg.getParameter<std::string>("triggerName")), 
-  nMaxMuons_(cfg.getUntrackedParameter<unsigned int>("maxNumberMuons", 2))
+  probeFilterDen_(cfg.getParameter<std::string>("probeFilterDen")),
+  probeFilterNum_(cfg.getParameter<std::string>("probeFilterNum")),
+  nMaxMuons_(cfg.getUntrackedParameter<unsigned int>("maxNumberMuons", 999999))
 {}
 
 void MuonTriggerEfficiencyAnalyzer::beginJob() {
@@ -174,8 +189,8 @@ void MuonTriggerEfficiencyAnalyzer::beginJob() {
   hists_["muonEta12"]->Sumw2();
   hists_["muonPhi12"]->Sumw2();
 
-  hists_["deltaR_trobj_tag"]   = outfile_->make<TH1F>("deltaR_trobj_tag" ,   "#DeltaR(trig,#mu)" , 150, 0., 0.3); 
-  hists_["deltaR_trobj_probe"] = outfile_->make<TH1F>("deltaR_trobj_probe" , "#DeltaR(trig,#mu)" , 150, 0., 0.3); 
+  hists_["deltaR_trobj_tag"]   = outfile_->make<TH1F>("deltaR_trobj_tag" ,   "#DeltaR(trig,#mu)" , 600, 0., 6.0); 
+  hists_["deltaR_trobj_probe"] = outfile_->make<TH1F>("deltaR_trobj_probe" , "#DeltaR(trig,#mu)" , 600, 0., 6.0); 
 }
 
 void MuonTriggerEfficiencyAnalyzer::endJob() {
@@ -302,12 +317,12 @@ void MuonTriggerEfficiencyAnalyzer::analyze(const edm::Event &event, const edm::
       for(unsigned int i=0; i!=nTagTrig; ++i) {
 	const trigger::TriggerObject & tagTo = toc[tagKeys[i]];
 	double tmpTagDeltaR = deltaR( (*mu1), tagTo ); 
-	if( tmpTagDeltaR<maxTagDeltaR ) {
-	  isTagTrigMatch = true;
-	  if( tmpTagDeltaR<finTagDeltaR ) {
-	    finTagDeltaR = tmpTagDeltaR;
+	if( tmpTagDeltaR<finTagDeltaR ) {
+	  finTagDeltaR = tmpTagDeltaR;
+	  if( tmpTagDeltaR<maxTagDeltaR ) {
+	    isTagTrigMatch = true;
+	    //break;
 	  }
-	  //break;
 	}
       }
 
@@ -324,8 +339,93 @@ void MuonTriggerEfficiencyAnalyzer::analyze(const edm::Event &event, const edm::
 	    double mumuMass = (mu1->p4()+mu2->p4()).mass();
 	    hists_["mumuMass_all"]->Fill( mumuMass );
 
-	    if( mumuMass>86. && mumuMass<96. ) {// check only muon pairs compatible with Z decay
-	      // Ok, tag-probe pair found
+	    if( mumuMass>86. && mumuMass<96. ) { // check only muon pairs compatible with Z decay
+	      // Ok, probe candidate found
+	      // Check if more requirements apply (i.e. probe needs be matched to some trigger filter)
+	      bool isGoodProbe = false; 
+
+	      // Modules in probe trigger path
+	      const std::vector<std::string>& moduleLabels(hltConfig_.moduleLabels(triggerIndex_));
+	      const unsigned int m(hltConfig_.size(triggerIndex_));
+	      assert( moduleLabels.size()==m );
+	      const unsigned int lastModuleIndex(triggerResults->index(triggerIndex_));
+	      assert(lastModuleIndex<m);
+
+	      if( probeFilterDen_.length()==0 ) { 
+		isGoodProbe = true; 
+	      }
+	      else {   // further matching needed
+		unsigned int filterIndex = triggerEvent->sizeFilters();
+		double maxProbeDeltaR = 999999.;
+		double muEta = 999999.;
+		double muPhi = 999999.;
+		// Results from TriggerEvent product - Attention: must look only for
+		// Modules actually run in this path for this event!
+		for(unsigned int j=0; j<=lastModuleIndex; ++j) { 
+		  //std::cout << "probeFilterDen/moduleLabel = " << probeFilterDen_.c_str() 
+		  //	    << "/" << moduleLabels[j].c_str() << std::endl;
+		  if( probeFilterDen_.compare(moduleLabels[j])!=0 ) continue; 
+		  filterIndex = triggerEvent->filterIndex(edm::InputTag(probeFilterDen_, "", triggerProcess_));
+		  break; 
+		}
+		//std::cout << "filterIndex/sizeFilters = " << filterIndex << "/" << triggerEvent->sizeFilters() << std::endl;
+		if( filterIndex<triggerEvent->sizeFilters() ) {
+		  const trigger::Vids & vids( triggerEvent->filterIds(filterIndex) );
+		  const trigger::Keys & keys( triggerEvent->filterKeys(filterIndex) );
+		  assert( vids.size()==keys.size() );
+		  const unsigned int nProbeTrig(vids.size());
+		  const std::string  moduleType(hltConfig_.moduleType(probeFilterDen_));
+		  //std::cout << "moduleType = " << moduleType.c_str() << std::endl;
+		  if( moduleType.compare("HLTLevel1GTSeed")==0 ) { // L1 matching
+		    // Propagation to MB2/ME2 for L1 matching
+		    eventSetup.get<IdealMagneticFieldRecord>().get(magneticField_);
+		    eventSetup.get<TrackingComponentsRecord>().get("SteppingHelixPropagatorAny", propagator_);
+		    eventSetup.get<MuonRecoGeometryRecord>().get(detLayerGeometry_);
+		    GlobalPoint pos( mu2->innerTrack()->outerPosition().x(), 
+				     mu2->innerTrack()->outerPosition().y(), 
+				     mu2->innerTrack()->outerPosition().z() );
+		    GlobalVector mom( mu2->innerTrack()->outerMomentum().x(), 
+				      mu2->innerTrack()->outerMomentum().y(), 
+				      mu2->innerTrack()->outerMomentum().z() );
+		    const FreeTrajectoryState state(pos, mom, (*mu2).charge(), &*magneticField_);
+		    DetId id;
+		    if( fabs(mu2->eta())<0.9 ) id = DTChamberId(0, 2, 0);
+		    else                       id = CSCDetId(0, 2, 0, 0, 0);
+		    const DetLayer *detLayer = detLayerGeometry_->idToLayer(id);
+		    TrajectoryStateOnSurface tsos = propagator_->propagate(state, detLayer->surface());
+		    muEta = tsos.globalPosition().eta(); 
+		    muPhi = tsos.globalPosition().phi(); 
+		    maxProbeDeltaR = 0.3;
+		  }
+		  if( moduleType.compare("HLTMuonL2PreFilter")==0 ) { // L2 matching
+		    muEta = (*mu2).eta(); 
+		    muPhi = (*mu2).phi(); 
+		    maxProbeDeltaR = 0.3;
+		  }
+		  else { // L3 et al. matching
+		    muEta = (*mu2).eta(); 
+		    muPhi = (*mu2).phi(); 
+		    maxProbeDeltaR = 0.1;
+		  }
+
+		  //std::cout << "muEta = " << muEta 
+		  //    << "muPhi = " << muPhi 
+		  //    << "maxProbeDeltaR = " << maxProbeDeltaR
+		  //    << std::endl;
+		  for(unsigned int i=0; i<nProbeTrig; ++i) {
+		    const trigger::TriggerObject & to = toc[keys[i]];
+		    double tmpProbeDeltaR = deltaR( muEta, muPhi, to.eta(), to.phi() ); 
+		    if( tmpProbeDeltaR<maxProbeDeltaR ) {
+		      isGoodProbe = true;
+		      break;
+		    }
+		  }
+		  //std::cout << "isGoodProbe = " << isGoodProbe << std::endl;		  
+		} // end if( filterIndex<triggerEvent->sizeFilters() )
+	      } // end else
+
+	      if(!isGoodProbe) continue; 
+
 	      // Go on and fill denominator plots
 	      hists_["muonPt_tag" ]->Fill( mu1->pt () );
 	      hists_["muonEta_tag"]->Fill( mu1->eta() );
@@ -343,38 +443,83 @@ void MuonTriggerEfficiencyAnalyzer::analyze(const edm::Event &event, const edm::
 	      hists_["muonEta12_den"]->Fill( mu1->eta(), mu2->eta() );
 	      hists_["muonPhi12_den"]->Fill( mu1->phi(), mu2->phi() );
   
-	      // Has the probe fired the trigger?
-	      if( !triggerResults->accept(triggerIndex_) ) continue; // no muon has fired the target trigger
+	      // Check if probe passes
+	      bool isPassingProbe = false; 
+	      unsigned int filterIndex = triggerEvent->sizeFilters(); 
+	      double finProbeDeltaR = 999999.; 
+	      double maxProbeDeltaR = 999999.;
+	      double muEta = 999999.;
+	      double muPhi = 999999.;
 
-	      // Modules in probe trigger path
-	      const std::vector<std::string>& moduleLabels(hltConfig_.moduleLabels(triggerIndex_));
-	      assert( moduleLabels.size()==hltConfig_.size(triggerIndex_) );
-	      const unsigned int moduleIndex( hltConfig_.size(triggerIndex_)-2 ); // index of last filter (excluding HLTEndBool)
-	      const unsigned int filterIndex( triggerEvent->filterIndex( edm::InputTag( moduleLabels[moduleIndex], "", triggerProcess_) ) );
-	      assert( filterIndex < triggerEvent->sizeFilters() );
-	      const trigger::Vids & vids( triggerEvent->filterIds(filterIndex) );
-	      const trigger::Keys & keys( triggerEvent->filterKeys(filterIndex) );
-	      assert( vids.size()==keys.size() );
-	      const unsigned int nProbeTrig(vids.size());
- 
-	      double maxProbeDeltaR = 0.1; 
-	      double finProbeDeltaR = 10.0; 
-	      bool isProbeTrigMatch = false; 
-	      for(unsigned int i=0; i!=nProbeTrig; ++i) {
-		const trigger::TriggerObject & to = toc[keys[i]];
-		double tmpProbeDeltaR = deltaR( (*mu2), to ); 
-		if( tmpProbeDeltaR<maxProbeDeltaR ) {
-		  isProbeTrigMatch = true;
-		  if( tmpProbeDeltaR<finProbeDeltaR ) {
-		    finProbeDeltaR = tmpProbeDeltaR;
-		  }
-		  //break;
+	      if( probeFilterNum_.length()==0 ) { // full path efficiency
+		if( triggerResults->accept(triggerIndex_) ) {
+		  const unsigned int moduleIndex( hltConfig_.size(triggerIndex_)-2 ); // index of last filter (excluding HLTEndBool)
+		  filterIndex = triggerEvent->filterIndex( edm::InputTag( moduleLabels[moduleIndex], "", triggerProcess_) ); 
 		}
 	      }
+	      else {   // efficiency of an intermediate filter
+		// Results from TriggerEvent product - Attention: must look only for
+		// modules actually run in this path for this event!
+		for(unsigned int j=0; j<=lastModuleIndex; ++j) { 
+		  if( probeFilterNum_.compare(moduleLabels[j])!=0 ) continue; 
+		  filterIndex = triggerEvent->filterIndex(edm::InputTag(probeFilterNum_, "", triggerProcess_));
+		  break; 
+		}
+	      }
+	      if( filterIndex<triggerEvent->sizeFilters() ) {
+		const trigger::Vids & vids( triggerEvent->filterIds(filterIndex) );
+		const trigger::Keys & keys( triggerEvent->filterKeys(filterIndex) );
+		assert( vids.size()==keys.size() );
+		const unsigned int nProbeTrig(vids.size());
+		const std::string  moduleType(hltConfig_.moduleType(probeFilterNum_));
+		if( moduleType.compare("HLTLevel1GTSeed")==0 ) { // L1 matching
+		  // Propagation to MB2/ME2 for L1 matching
+		  eventSetup.get<IdealMagneticFieldRecord>().get(magneticField_);
+		  eventSetup.get<TrackingComponentsRecord>().get("SteppingHelixPropagatorAny", propagator_);
+		  eventSetup.get<MuonRecoGeometryRecord>().get(detLayerGeometry_);
+		  GlobalPoint pos( mu2->innerTrack()->outerPosition().x(), 
+				   mu2->innerTrack()->outerPosition().y(), 
+				   mu2->innerTrack()->outerPosition().z() );
+		  GlobalVector mom( mu2->innerTrack()->outerMomentum().x(), 
+				    mu2->innerTrack()->outerMomentum().y(), 
+				    mu2->innerTrack()->outerMomentum().z() );
+		  const FreeTrajectoryState state(pos, mom, (*mu2).charge(), &*magneticField_);
+		  DetId id;
+		  if( fabs(mu2->eta())<0.9 ) id = DTChamberId(0, 2, 0);
+		  else                       id = CSCDetId(0, 2, 0, 0, 0);
+		  const DetLayer *detLayer = detLayerGeometry_->idToLayer(id);
+		  TrajectoryStateOnSurface tsos = propagator_->propagate(state, detLayer->surface());
+		  muEta = tsos.globalPosition().eta(); 
+		  muPhi = tsos.globalPosition().phi(); 
+		  maxProbeDeltaR = 0.3;
+		}
+		if( moduleType.compare("HLTMuonL2PreFilter")==0 ) { // L2 matching
+		  muEta = (*mu2).eta(); 
+		  muPhi = (*mu2).phi(); 
+		  maxProbeDeltaR = 0.3;
+		}
+		else { // L3 et al. matching
+		  muEta = (*mu2).eta(); 
+		  muPhi = (*mu2).phi(); 
+		  maxProbeDeltaR = 0.1;
+		}
+
+		for(unsigned int i=0; i<nProbeTrig; ++i) {
+		  const trigger::TriggerObject & to = toc[keys[i]];
+		  double tmpProbeDeltaR = deltaR( muEta, muPhi, to.eta(), to.phi() ); 
+		  if( tmpProbeDeltaR<finProbeDeltaR ) {
+		    finProbeDeltaR = tmpProbeDeltaR;
+		    if( tmpProbeDeltaR<maxProbeDeltaR ) {
+		      isPassingProbe = true;
+		      //break;
+		    }
+		  }
+		}
+	      } // end if( filterIndex<triggerEvent->sizeFilters() )
 
 	      hists_["deltaR_trobj_probe"]->Fill(finProbeDeltaR); 
 
-	      if(isProbeTrigMatch==false) continue; 
+	      if(isPassingProbe==false) continue; 
 
 	      // Ok, probe passed
 	      // Go on and fill numerator plots
