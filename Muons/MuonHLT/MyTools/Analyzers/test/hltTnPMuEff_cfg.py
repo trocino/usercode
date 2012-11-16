@@ -77,37 +77,53 @@ process.source = cms.Source("PoolSource",
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.GlobalTag.globaltag = "GR_R_52_V7::All"
 
-PATHNAME = "Mu40"
-PROBEDEN = "hltL2fL1sMu16L1f0L2Filtered16Q"
-PROBENUM = "hltL3fL1sMu16L1f0L2f16QL3Filtered40Q"
+process.load("Configuration.StandardSequences.MagneticField_38T_cff")
+process.load("Configuration.Geometry.GeometryIdeal_cff")
+process.load("Geometry.CommonDetUnit.globalTrackingGeometry_cfi")
+process.load("RecoMuon.DetLayers.muonDetLayerGeometry_cfi")
+process.load("TrackPropagation.SteppingHelixPropagator.SteppingHelixPropagatorAny_cfi")
 
-process.MuonTriggerEfficiencyAnalyzer =cms.EDAnalyzer("MuonTriggerEfficiencyAnalyzer",
-                                                      vertexes = cms.InputTag("offlinePrimaryVertices"),
-                                                      muons = cms.InputTag("muons"),
-                                                      triggerProcess = cms.string("HLT"), #"TEST"
-                                                      tagTriggerName = cms.string("HLT_IsoMu24_v"),
-                                                      triggerName = cms.string("HLT_"+PATHNAME+"_v"), # hltL1sMu16, hltL2fL1sMu16L1f0L2Filtered16Q, hltL3fL1sMu16L1f0L2f16QL3Filtered40Q 
-                                                      probeFilterDen = cms.string(PROBEDEN),
-                                                      probeFilterNum = cms.string(PROBENUM),
-                                                      maxNumberMuons = cms.untracked.uint32(999999)
-                                                      )
+# HLT_IsoMu24 = hltL1sMu16, hltL2fL1sMu16L1f0L2Filtered16Q, hltL3fL1sMu16L1f0L2f16QL3Filtered24Q, hltL3crIsoL1sMu16L1f0L2f16QL3f24QL3crIsoRhoFiltered0p15
+TRIGNAME = "IsoMu24"
+PROBEDEN = [ "",     "",           "hltL1sMu16",                     "hltL2fL1sMu16L1f0L2Filtered16Q",       "hltL3fL1sMu16L1f0L2f16QL3Filtered24Q"                    ] 
+PROBENUM = [ "",     "hltL1sMu16", "hltL2fL1sMu16L1f0L2Filtered16Q", "hltL3fL1sMu16L1f0L2f16QL3Filtered24Q", "hltL3crIsoL1sMu16L1f0L2f16QL3f24QL3crIsoRhoFiltered0p15" ] 
+NAMEPLOT = [ "Full", "L1",         "L2overL1",                       "L3overL2",                             "ISOoverL3"                                               ] 
 
-OUTFILE = 'efficiency_'+PATHNAME
+## HLT_M40 = hltL1sMu16, hltL2fL1sMu16L1f0L2Filtered16Q, hltL3fL1sMu16L1f0L2f16QL3Filtered40Q 
+#TRIGNAME = "IsoMu24"
+#PROBEDEN = [ "",     "",           "hltL1sMu16",                     "hltL2fL1sMu16L1f0L2Filtered16Q"       ] 
+#PROBENUM = [ "",     "hltL1sMu16", "hltL2fL1sMu16L1f0L2Filtered16Q", "hltL3fL1sMu16L1f0L2f16QL3Filtered40Q" ] 
+#NAMEPLOT = [ "Full", "L1",         "L2overL1",                       "L3overL2"                             ] 
 
-if PROBENUM != '': OUTFILE = OUTFILE+'_'+PROBENUM
-else:              OUTFILE = OUTFILE+'_fullpath'
+#process.schedule = cms.Schedule()
 
-if PROBEDEN != '': OUTFILE = OUTFILE+'_over_'+PROBEDEN
+for i in range(len(PROBEDEN)):
+    PROCMODU = TRIGNAME+NAMEPLOT[i]
+    PROCPATH = 'Path'+PROCMODU
+    module =cms.EDAnalyzer("MuonTriggerEfficiencyAnalyzer",
+                           vertexes = cms.InputTag("offlinePrimaryVertices"),
+                           muons = cms.InputTag("muons"),
+                           triggerProcess = cms.string("HLT"), #"TEST"
+                           tagTriggerName = cms.string("HLT_IsoMu24_v"),
+                           triggerName = cms.string("HLT_"+TRIGNAME+"_v"), 
+                           probeFilterDen = cms.string(PROBEDEN[i]),
+                           probeFilterNum = cms.string(PROBENUM[i]),
+                           maxNumberMuons = cms.untracked.uint32(999999)
+                           )
+    setattr(process, PROCMODU, module)
+    setattr(process, PROCPATH, cms.Path(module))
 
-OUTFILE = OUTFILE+'.root'
-
-print "Output file: "+OUTFILE
+#OUTFILE = 'efficiency_'+TRIGNAME
+#if PROBENUM != '': OUTFILE = OUTFILE+'_'+PROBENUM
+#else:              OUTFILE = OUTFILE+'_fullpath'
+#if PROBEDEN != '': OUTFILE = OUTFILE+'_over_'+PROBEDEN
+#OUTFILE = OUTFILE+'.root'
+#print "Output file: "+OUTFILE
 
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string(OUTFILE),
+                                   fileName = cms.string("efficiencies_"+TRIGNAME+'.root'),
                                    closeFileFast = cms.untracked.bool(False)
                                    )
 
-process.HLTMuEffPath = cms.Path(process.MuonTriggerEfficiencyAnalyzer)
 
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(10000))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
