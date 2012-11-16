@@ -1,7 +1,7 @@
 /** \class MuonTriggerEfficiencyAnalyzer
  *  Class to measure muon trigger efficiencies (very rough)
  *
- *  $Date: 2012/11/15 17:54:22 $
+ *  $Date: 2012/11/16 15:00:34 $
  *  $Revision: 1.2 $
  *  \authors D. Trocino - Northeastern University <daniele.trocino@cern.ch>
  */
@@ -388,11 +388,26 @@ void MuonTriggerEfficiencyAnalyzer::analyze(const edm::Event &event, const edm::
 				      mu2->innerTrack()->outerMomentum().y(), 
 				      mu2->innerTrack()->outerMomentum().z() );
 		    const FreeTrajectoryState state(pos, mom, (*mu2).charge(), &*magneticField_);
-		    DetId id;
-		    if( fabs(mu2->eta())<0.9 ) id = DTChamberId(0, 2, 0);
-		    else                       id = CSCDetId(0, 2, 0, 0, 0);
-		    const DetLayer *detLayer = detLayerGeometry_->idToLayer(id);
+		    const DetLayer *detLayer = NULL;
+		    if( fabs(mu2->eta())>0.9 ) {
+		      if( mu2->eta()>0. )
+			detLayer = detLayerGeometry_->idToLayer(CSCDetId(1, 2, 0, 0, 0));
+		      else 
+			detLayer = detLayerGeometry_->idToLayer(CSCDetId(2, 2, 0, 0, 0));
+		      if(detLayer==NULL && fabs(mu2->eta())<1.2) 
+			detLayer = detLayerGeometry_->idToLayer(DTChamberId(0, 2, 0));
+		    }
+		    else 
+		      detLayer = detLayerGeometry_->idToLayer(DTChamberId(0, 2, 0)); 
+		    if(detLayer==NULL) {
+		      std::cout << "WARNING: detLayer is NULL at eta=" << mu2->eta() << std::endl;
+		      break; 
+		    }
 		    TrajectoryStateOnSurface tsos = propagator_->propagate(state, detLayer->surface());
+		    if(!tsos.isValid()) {
+		      std::cout << "WARNING: tsos is not valid at eta=" << mu2->eta() << std::endl;
+		      break; 
+		    }
 		    muEta = tsos.globalPosition().eta(); 
 		    muPhi = tsos.globalPosition().phi(); 
 		    maxProbeDeltaR = 0.3;
@@ -484,11 +499,26 @@ void MuonTriggerEfficiencyAnalyzer::analyze(const edm::Event &event, const edm::
 				    mu2->innerTrack()->outerMomentum().y(), 
 				    mu2->innerTrack()->outerMomentum().z() );
 		  const FreeTrajectoryState state(pos, mom, (*mu2).charge(), &*magneticField_);
-		  DetId id;
-		  if( fabs(mu2->eta())<0.9 ) id = DTChamberId(0, 2, 0);
-		  else                       id = CSCDetId(0, 2, 0, 0, 0);
-		  const DetLayer *detLayer = detLayerGeometry_->idToLayer(id);
+		  const DetLayer *detLayer = NULL;
+		  if( fabs(mu2->eta())>0.9 ) {
+		    if( mu2->eta()>0. )
+		      detLayer = detLayerGeometry_->idToLayer(CSCDetId(1, 2, 0, 0, 0));
+		    else 
+		      detLayer = detLayerGeometry_->idToLayer(CSCDetId(2, 2, 0, 0, 0));
+		    if(detLayer==NULL && fabs(mu2->eta())<1.2) 
+		      detLayer = detLayerGeometry_->idToLayer(DTChamberId(0, 2, 0));
+		  }
+		  else 
+		    detLayer = detLayerGeometry_->idToLayer(DTChamberId(0, 2, 0)); 
+		  if(detLayer==NULL) {
+		    std::cout << "WARNING: detLayer is NULL at eta=" << mu2->eta() << std::endl;
+		    break; 
+		  }
 		  TrajectoryStateOnSurface tsos = propagator_->propagate(state, detLayer->surface());
+		  if(!tsos.isValid()) {
+		    std::cout << "WARNING: tsos is not valid at eta=" << mu2->eta() << std::endl;
+		    break; 
+		  }
 		  muEta = tsos.globalPosition().eta(); 
 		  muPhi = tsos.globalPosition().phi(); 
 		  maxProbeDeltaR = 0.3;
