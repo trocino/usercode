@@ -9,6 +9,9 @@
 <library   file="HLTCounter.cc" name="HLTCounter">
   <flags   EDM_PLUGIN="1"/>
 </library>
+<library   file="HLTPathFiring.cc" name="HLTPathFiring">
+  <flags   EDM_PLUGIN="1"/>
+</library>
 <library   file="MuonTriggerEfficiencyAnalyzer.cc" name="MuonTriggerEfficiencyAnalyzer">
   <use name="TrackingTools/TrajectoryState"/>
   <use name="MagneticField/Engine"/>
