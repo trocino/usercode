@@ -1,0 +1,40 @@
+<use   name="FWCore/Framework"/>
+<use   name="FWCore/Utilities"/>
+<use   name="FWCore/ParameterSet"/>
+<use   name="FWCore/ServiceRegistry"/>
+<use   name="CommonTools/UtilAlgos"/>
+<use   name="DataFormats/HepMCCandidate"/> 
+<use   name="DataFormats/Provenance"/> 
+<use   name="DataFormats/VertexReco"/>
+<use   name="DataFormats/TrackReco"/>
+<use   name="DataFormats/MuonReco"/>
+<use   name="DataFormats/MuonDetId"/>
+<use   name="DataFormats/TrajectoryState"/>
+<use   name="SimDataFormats/TrackingAnalysis"/>
+<use   name="SimDataFormats/Track"/>
+<use   name="SimTracker/TrackAssociation"/>
+<use   name="SimTracker/TrackerHitAssociation"/>
+<use   name="SimTracker/Records"/>
+<use   name="TrackingTools/AnalyticalJacobians"/>
+<use   name="Geometry/GEMGeometry"/>
+<use   name="Geometry/Records"/>
+<use   name="CLHEP"/>
+<use   name="root"/>
+<library   file="TPMuonTrackProducer.cc" name="TPMuonTrackProducer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="RecoMuonTrackProducer.cc" name="RecoMuonTrackProducer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="ME0MuonTrackProducer.cc" name="ME0MuonTrackProducer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="RecoMuonGeneralAnalyzer.cc" name="RecoMuonGeneralAnalyzer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="ME0MuonGeneralAnalyzer.cc" name="ME0MuonGeneralAnalyzer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
+<library   file="NewME0MuonGeneralAnalyzer.cc" name="NewME0MuonGeneralAnalyzer">
+  <flags   EDM_PLUGIN="1"/>
+</library>
